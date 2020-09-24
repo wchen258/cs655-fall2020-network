@@ -18,6 +18,6 @@ if __name__ == '__main__':
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((HOST, PORT))
         msg = input()
-        s.sendall(msg.encode('utf-8'))
+        s.sendall(msg.encode())
         data = s.recv(MAX_BYTE)
-        print(data.decode('utf-8'))
+        print(data.decode())
