@@ -11,7 +11,7 @@ def get_server_parser():
     return parser
 
 
-def process_request(conn: socket, addr: tuple):
+def process_request(conn: socket.socket, addr: tuple):
     with conn:
         print('Connected by', addr)
         while True:

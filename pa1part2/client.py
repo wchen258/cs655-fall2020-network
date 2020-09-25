@@ -3,7 +3,7 @@
 import socket
 import time
 
-from util import base_parser, read_line, write_line
+from util import *
 
 
 def get_client_parser():
@@ -11,8 +11,6 @@ def get_client_parser():
     return parser
 
 
-MEASUREMENTS = {'rtt': (1, 100, 200, 400, 800, 1000),
-                'tput': tuple(2**i for i in range(10, 16))}
 SERVER_DELAYS = (0, 1, 10, 20, 50, 100)
 NUMBER_OF_PROBES = 15
 
@@ -32,7 +30,7 @@ if __name__ == '__main__':
                         # Connection Setup Phase
                         write_line(
                             s, f's {measurement} {NUMBER_OF_PROBES} {message_size} {server_delay}')
-                        print(read_line(s))
+                        print(read_line(s), end='')
                         # Measurement Phase
                         for i in range(NUMBER_OF_PROBES):
                             # always send xs as payload
@@ -42,6 +40,7 @@ if __name__ == '__main__':
                             data = read_line(s)
                             end = time.time()
                             print((end - start)*1000, file=f)
+                            print(data, end='')
                         # Connection Termination Phase
                         write_line(s, 't')
                         print(read_line(s))
