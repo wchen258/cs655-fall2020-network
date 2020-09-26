@@ -3,7 +3,7 @@
 import socket
 import threading
 
-from util import base_parser, MAX_BYTE
+from util import *
 
 
 def get_server_parser():
@@ -15,10 +15,12 @@ def process_request(conn: socket.socket, addr: tuple):
     print('Connected by', addr)
     with conn:
         while True:
-            data = conn.recv(MAX_BYTE)
-            if not data:
+            msg = read_line(conn)
+            if not msg:
                 break
-            conn.sendall(data)
+            write_line(conn, msg, False)
+            if msg[-1] != '\n':
+                break
     print('Connection', addr, 'closed')
 
 

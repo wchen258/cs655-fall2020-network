@@ -2,7 +2,7 @@
 
 import socket
 
-from util import base_parser, MAX_BYTE
+from util import *
 
 
 def get_client_parser():
@@ -18,6 +18,5 @@ if __name__ == '__main__':
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((HOST, PORT))
         msg = input()
-        s.sendall(msg.encode())
-        data = s.recv(MAX_BYTE)
-        print(data.decode())
+        write_line(s, msg)
+        print(read_line(s), end='')

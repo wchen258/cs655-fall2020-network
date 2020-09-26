@@ -1,4 +1,5 @@
 import argparse
+import socket
 
 MAX_BYTE = 1024
 
@@ -9,3 +10,18 @@ def base_parser(with_address: bool):
         parser.add_argument('host', type=str, action='store')
     parser.add_argument('port', type=int, action='store')
     return parser
+
+
+def read_line(s: socket.socket) -> str:
+    ret = ''
+    while True:
+        data = s.recv(MAX_BYTE)
+        if not data:  # connection closed
+            return ret
+        ret += data.decode()
+        if ret[-1] == '\n':  # end of message
+            return ret
+
+
+def write_line(s: socket.socket, line: str, add_lf: bool = True):
+    s.sendall(line.encode() + (b'\n' if add_lf else b''))
