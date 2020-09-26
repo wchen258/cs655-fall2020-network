@@ -21,21 +21,22 @@ CTP404 = '404 ERROR: Invalid Connection Termination Message'
 
 def check_CSP_msg(msg: str):
     try:
-        assert(msg[-1] == '\n') # LF in the end
+        assert(msg[-1] == '\n')  # LF in the end
         args = msg.split()
-        assert(len(args) == 5) # 5 parts
-        assert(sum(len(arg) for arg in args)+5 == len(msg)) # no more WS
+        assert(len(args) == 5)  # 5 parts
+        assert(sum(len(arg) for arg in args)+5 == len(msg))  # no more WS
         phase, measurement, number_of_probes, message_size, server_delay = args
-        assert(phase == 's')
-        assert(measurement in MEASUREMENTS) # rtt or tput
+        assert(phase == 's')  # CSP
+        assert(measurement in MEASUREMENTS)  # rtt or tput
         number_of_probes = int(number_of_probes)
         assert(number_of_probes >= 0)
         message_size = int(message_size)
-        assert(message_size in MEASUREMENTS[measurement]) # corresponding message size
+        # corresponding message size
+        assert(message_size in MEASUREMENTS[measurement])
         server_delay = int(server_delay)
         assert(server_delay >= 0)
         return (number_of_probes, message_size, server_delay)
-    except: # assertion or conversion fails
+    except:  # assertion or conversion fails
         return False
 
 
@@ -43,22 +44,21 @@ def check_MP_msg(msg: str, sequence_number: int, message_size: int):
     try:
         assert(msg[-1] == '\n')
         args = msg.split()
-        assert(args[0] == 'm')
+        assert(args[0] == 'm')  # MP
         assert(int(args[1]) == sequence_number)
-        assert(4+len(args[1])+message_size == len(msg))
+        assert(4+len(args[1])+message_size == len(msg))  # 4 = 2 WSs + m + Lf
         return True
     except:
         return False
 
 
 def check_CTP_msg(msg: str):
-    print(len(msg))
-    return msg == 't\n'
+    return msg == 't\n'  # CTP
 
 
 def process_request(conn: socket.socket, addr: tuple):
     print('Connected by', addr)
-    for _ in (True,): # one shot, support break from with
+    for _ in (True,):  # one shot, support break from with
         with conn:
             # Connection Setup Phase
             msg = read_line(conn)
@@ -75,9 +75,9 @@ def process_request(conn: socket.socket, addr: tuple):
                 if not valid:
                     write_line(conn, MP404)
                     break
-                time.sleep(server_delay/1000)
+                time.sleep(server_delay/1000)  # emulate propagation delay
                 write_line(conn, msg, False)
-            else: # no error
+            else:  # no error
                 # Connection Termination Phase
                 msg = read_line(conn)
                 valid = check_CTP_msg(msg)

@@ -43,4 +43,4 @@ if __name__ == '__main__':
                             print(data, end='')
                         # Connection Termination Phase
                         write_line(s, 't')
-                        print(read_line(s))
+                        print(read_line(s), end='')

@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Sep 21 11:17:34 2020
-
-@author: kokoro
-"""
-
 import argparse
 import socket
 

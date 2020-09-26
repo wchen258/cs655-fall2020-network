@@ -12,8 +12,8 @@ def get_server_parser():
 
 
 def process_request(conn: socket.socket, addr: tuple):
+    print('Connected by', addr)
     with conn:
-        print('Connected by', addr)
         while True:
             data = conn.recv(MAX_BYTE)
             if not data:
