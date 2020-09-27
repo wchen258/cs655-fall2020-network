@@ -84,6 +84,8 @@ def genplotList(exp_type:str, delays, exp_name:str, probes=15):
     plt.xlabel(x_label)
     plt.ylabel(y_label)
     plt.legend(loc='upper left')
+    ax.set_ylim(bottom=0)
+    ax.set_xlim(left=1)
     fname = '_'.join([exp_type, *list(str(d) for d in delays), exp_name, str(probes)]) + '.png'
     path = os.path.join('plots', fname)
     plt.savefig(path)
