@@ -33,5 +33,8 @@ if __name__ == '__main__':
         s.bind((HOST, PORT))
         s.listen()
         while True:  # use multithreading to process requests simultaneously
-            conn, addr = s.accept()
-            threading.Thread(target=process_request, args=(conn, addr)).start()
+            try:
+                conn, addr = s.accept()
+                threading.Thread(target=process_request, args=(conn, addr)).start()
+            except:
+                exit(0)
