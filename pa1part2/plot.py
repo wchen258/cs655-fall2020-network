@@ -35,7 +35,7 @@ def genplot(exp_type:str, delay:int, exp_name:str, probes=15):
     
     plt.plot(x, y, 'or')
     plt.plot(x, y, '-', color='red')
-    plt.fill_between(x, y - y_err, y + y_err,color='gray', alpha=0.2)
+    plt.fill_between(x, y - y_err, y + y_err,color='red', alpha=0.095)
     plt.xlabel(x_label)
     plt.ylabel(y_label)
     fname = '_'.join([exp_type, str(delay), exp_name, str(probes)]) + '.png'
