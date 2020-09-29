@@ -19,7 +19,7 @@ if __name__ == '__main__':
         s.connect((HOST, PORT))
         try:
             msg = input()
-        except:
+        except:  # EOF
             msg = ''
         write_line(s, msg)
         print(read_line(s), end='')

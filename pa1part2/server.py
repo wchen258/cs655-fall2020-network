@@ -99,6 +99,7 @@ if __name__ == '__main__':
         while True:  # use multithreading to process requests simultaneously
             try:
                 conn, addr = s.accept()
-                threading.Thread(target=process_request, args=(conn, addr)).start()
-            except:
+                threading.Thread(target=process_request,
+                                 args=(conn, addr)).start()
+            except KeyboardInterrupt:  # Ctrl+C
                 exit(0)
