@@ -17,6 +17,9 @@ if __name__ == '__main__':
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((HOST, PORT))
-        msg = input()
+        try:
+            msg = input()
+        except:
+            msg = ''
         write_line(s, msg)
         print(read_line(s), end='')

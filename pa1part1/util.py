@@ -1,8 +1,6 @@
 import argparse
 import socket
 
-MAX_BYTE = 1024
-
 
 def base_parser(with_address: bool):
     parser = argparse.ArgumentParser()
@@ -13,14 +11,15 @@ def base_parser(with_address: bool):
 
 
 def read_line(s: socket.socket) -> str:
-    ret = ''
+    ret = b''
     while True:
-        data = s.recv(MAX_BYTE)
-        if not data:  # connection closed
-            return ret
-        ret += data.decode()
-        if ret[-1] == '\n':  # end of message
-            return ret
+        byte = s.recv(1)
+        if not byte:  # connection closed
+            break
+        ret += byte
+        if byte == b'\n':  # end of message
+            break
+    return ret.decode()
 
 
 def write_line(s: socket.socket, line: str, add_lf: bool = True):
