@@ -2,6 +2,12 @@
 
 import socket
 import time
+import os
+import csv
+import tqdm
+import numpy as np
+from datetime import datetime
+
 
 from util import *
 
@@ -18,20 +24,30 @@ if __name__ == '__main__':
     args = get_client_parser().parse_args()
     HOST = args.host
     PORT = args.port
+    
+    ndir = './results/'+str(datetime.now())
+    if not os.path.exists(ndir):
+        os.makedirs(ndir)
 
     for measurement in MEASUREMENTS:
-        with open(measurement, 'w') as f:  # output file
-            for server_delay in SERVER_DELAYS:
+        # with open(measurement, 'w') as f:  # output file
+        desc = measurement+'_delays'
+        for server_delay in tqdm.tqdm(SERVER_DELAYS, desc=desc):
+            path = os.path.join(ndir, '_'.join([measurement, str(server_delay)]))
+            with open(path+'.csv', 'a+') as f:
+                csvwriter = csv.writer(f, delimiter=',')
                 for message_size in MEASUREMENTS[measurement]:
-                    print(measurement, server_delay,
-                          'ms', message_size, 'bytes')
+                    tql = '_'.join([measurement, str(server_delay),
+                          'ms', str(message_size), 'bytes'])
+                    tqdm.tqdm.write(tql)
                     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                         s.connect((HOST, PORT))
                         # Connection Setup Phase
                         write_line(
                             s, f's {measurement} {NUMBER_OF_PROBES} {message_size} {server_delay}')
-                        print(read_line(s), end='')
+                        tqdm.tqdm.write(read_line(s))
                         # Measurement Phase
+                        rtts = []
                         for i in range(NUMBER_OF_PROBES):
                             # always send xs as payload
                             msg = f'm {i+1} ' + 'x' * message_size
@@ -39,8 +55,10 @@ if __name__ == '__main__':
                             write_line(s, msg)
                             data = read_line(s)
                             end = time.time()
-                            print((end - start)*1000, file=f)
-                            print(data, end='')
+                            # print((end - start)*1000, file=f)
+                            tqdm.tqdm.write(data)
+                            rtts.append((end-start)*1000)
                         # Connection Termination Phase
+                        csvwriter.writerow([message_size, np.average(rtts), np.std(rtts)])
                         write_line(s, 't')
-                        print(read_line(s), end='')
+                        tqdm.tqdm.write(read_line(s))
