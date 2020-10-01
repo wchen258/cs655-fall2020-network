@@ -36,6 +36,17 @@ hello world!
 * We implement more accurate validation than the provided test servers.
 ## Test
 * To start server on csa1, choose a port (here 58233) and run `python3 server.py 58233`.
-* To start client on csa1 or other devices, run `python3 client.py csa1.bu.edu 58233`
+* To start client on csa1 or other devices, first install `tqdm` by `python3 -m pip install tqdm --user`, then run `python3 client.py csa1.bu.edu 58233`.
 * We also implement a shell script `test.sh` to check whether `server.py` works correctly under different requests. We come up with some testcases (stored in `testcases`). To test any server, run `sh test.sh <Address> <Port>`. Below is the result of our server and the provided test server. As we can see, we passed all testcases, but the provided server failed some cases.
 ![](test.jpg)
+## Environment
+Experiment|Message size(byte)|Delay(ms)|Probes|Client|Server
+-|-|-|-|-|-
+RTT1|1,100,200,400,800,1000|0,1,10,20,50,100|15|Local|csa1
+TPUT1|1K,2K,4K,8K,16K,32K|0,1,10,20,50,100|15|Local|csa1
+RTT2|1,100,200,400,800,1000|0,1,10,20,50,100|15|csa1|Test Server
+TPUT2|1K,2K,4K,8K,16K,32K|0,1,10,20,50,100|15|csa1|Test Server
+* Local: macOS (Darwin 19.4.0)
+* csa1: CentOS (Linux 3.10.0-1127.18.2.el7.x86_64)
+* Test Server: unknown, 128.206.119.42:8888
+## Result
