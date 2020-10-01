@@ -21,16 +21,16 @@ def get_npy(exp_type:str, delay:int, exp_name):
 
 
 def genplotList(exp_type:str, delays, exp_name:str, probes=15):
-    x_label = 'msg_size (byte)' if exp_type=='rtt' else 'msg_size (KB)'
+    x_label = 'msg_size (byte)' if exp_type=='rtt' else 'msg_size (B)'
     y_label = 'avg_rtt (ms)' if exp_type=='rtt' else 'avg_tput (kbps)'
-    
+    plt.clf()
     ax = plt.gca()
     for delay in delays:
         x,y,y_err = get_npy(exp_type, delay, exp_name)
         if exp_type=='tput':
-            x = x/1000
-            y = x / y * (1024/1000)
-            y_err = x / y_err * (1024/1000)
+            x = x
+            y = 8*x / (y/1000) / 1000
+            y_err = 8*x / (y_err/1000) / 1000
         color = next(ax._get_lines.prop_cycler)['color']
         plt.plot(x, y, 'o', color=color, label='delay ' + str(delay))
         plt.plot(x, y, '-', color=color)
@@ -59,5 +59,17 @@ if __name__=='__main__':
     if not os.path.exists('./plots'):
         os.makedirs('./plots')
         
+    # genrete local-csa1 plot
+    genplotList('tput', SERVER_DELAYS[:1], 'exp1')
+    genplotList('rtt', SERVER_DELAYS[:1], 'exp1')
     genplotList('tput', SERVER_DELAYS[:4], 'exp1')
+    genplotList('rtt', SERVER_DELAYS[:4], 'exp1')
+    
+    # generate csa1-testserver plot
+    genplotList('tput', SERVER_DELAYS[:1], 'exp2')
+    genplotList('rtt', SERVER_DELAYS[:1], 'exp2')
+
+    
+    
+    
     
