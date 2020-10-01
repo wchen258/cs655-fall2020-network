@@ -1,13 +1,13 @@
 # client
 
+import csv
+import os
 import socket
 import time
-import os
-import csv
-import tqdm
-import numpy as np
 from datetime import datetime
 
+import numpy as np
+import tqdm
 
 from util import *
 
@@ -24,7 +24,7 @@ if __name__ == '__main__':
     args = get_client_parser().parse_args()
     HOST = args.host
     PORT = args.port
-    
+
     ndir = './results/'+str(datetime.now())
     if not os.path.exists(ndir):
         os.makedirs(ndir)
@@ -33,12 +33,13 @@ if __name__ == '__main__':
         # with open(measurement, 'w') as f:  # output file
         desc = measurement+'_delays'
         for server_delay in tqdm.tqdm(SERVER_DELAYS, desc=desc):
-            path = os.path.join(ndir, '_'.join([measurement, str(server_delay)]))
+            path = os.path.join(ndir, '_'.join(
+                [measurement, str(server_delay)]))
             with open(path+'.csv', 'a+') as f:
                 csvwriter = csv.writer(f, delimiter=',')
                 for message_size in MEASUREMENTS[measurement]:
                     tql = '_'.join([measurement, str(server_delay),
-                          'ms', str(message_size), 'bytes'])
+                                    'ms', str(message_size), 'bytes'])
                     tqdm.tqdm.write(tql)
                     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                         s.connect((HOST, PORT))
@@ -59,6 +60,7 @@ if __name__ == '__main__':
                             tqdm.tqdm.write(data)
                             rtts.append((end-start)*1000)
                         # Connection Termination Phase
-                        csvwriter.writerow([message_size, np.average(rtts), np.std(rtts)])
+                        csvwriter.writerow(
+                            [message_size, np.average(rtts), np.std(rtts)])
                         write_line(s, 't')
                         tqdm.tqdm.write(read_line(s))
