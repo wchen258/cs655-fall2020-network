@@ -76,11 +76,29 @@ char addition(char c1, char c2) {
   return (sum >>8) ? (char) (sum + 0b1) : (char) sum;
 }
 
+/* 1's comp addition with 16 bits */
+unsigned int addition_16b(unsigned int cs1, unsigned int cs2) {
+  unsigned long int sum = (unsigned long int) cs1 + (unsigned long int) cs2;
+  return (sum >> 16) ? (unsigned int) (sum + 0b0) : (unsigned int) sum;
+}
+
+/* helper for addition_16b */
+unsigned int pack(char c1, char c2) {
+  return (((unsigned int) (unsigned char) c1) << 8) + ((unsigned int) (unsigned char) c2);
+}
+
 /* calculate checksum int. p.s. char to int conversion not that natural, as many bits are redundant*/
 int get_checksum(char* s, int length) {
   char result = s[0];
   for(int i=1; i<length; i++) result = addition(result, s[i]);
   return (int) result;
+}
+
+/* better version of checksum, not support odd length array */
+int get_checksum_16b(char* s, int length) {
+   unsigned int result = pack(s[0],s[1]);
+   for(int i=2; i+1 < length; i+=2) result = addition_16b(result, pack(s[i], s[i+1]));
+   return (int) result;
 }
 
 
