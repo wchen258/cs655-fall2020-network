@@ -70,6 +70,21 @@ extern double time_now;      // simulation time, for your debug purpose
 
 /********* YOU MAY ADD SOME ROUTINES HERE ********/
 
+/* 1's complementary addition arithmetic */
+char addition(char c1, char c2) {
+  unsigned int sum = (unsigned int) (unsigned char) c1 + (unsigned int) (unsigned char) c2;
+  return (sum >>8) ? (char) (sum + 0b1) : (char) sum;
+}
+
+/* calculate checksum int. p.s. char to int conversion not that natural, as many bits are redundant*/
+int get_checksum(char* s, int length) {
+  char result = s[0];
+  for(int i=1; i<length; i++) result = addition(result, s[i]);
+  return (int) result;
+}
+
+
+
 /********* STUDENTS WRITE THE NEXT SEVEN ROUTINES *********/
 
 /* called from layer 5, passed the data to be sent to other side */
