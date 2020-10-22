@@ -70,6 +70,8 @@ extern double time_now;      // simulation time, for your debug purpose
 
 /********* YOU MAY ADD SOME ROUTINES HERE ********/
 
+/***  checksum computation ***/
+
 /* 1's complementary addition arithmetic */
 char addition(char c1, char c2) {
   unsigned int sum = (unsigned int) (unsigned char) c1 + (unsigned int) (unsigned char) c2;
@@ -101,6 +103,35 @@ int get_checksum_16b(char* s, int length) {
    return (int) result;
 }
 
+/*** useful operation ***/
+
+/* wrap around addition, since LIMIT_SEQNO upon reach would fall back to zero, an wrap addition might be handy whenever to add seqno */
+/* e.g. if limit=5, n1=3, n2=3, it returns 0 , limit should be LIMIT_SEQNO. Useful when advancing the seqno and move rcv/send window base  */
+int wrap_add(int n1, int n2, int limit_seqno){
+	int sum = n1 + n2;
+	return (sum > limit_seqno) ? sum - limit_seqno - 1 : sum;  
+}
+
+/* whether a seqno is within the window check. This return 1 upon avail -1 upon not avail 
+ * whenever before send a msg, always use this to check first */
+int check(int base, int seqno, int window_size, int limit_seqno) {
+	if(window_size > limit_seqno) {
+		printf("window_size larger than limit_seqno. This is not handled!\n");
+	}
+	int sum = base + window_size;
+	if (sum-1 <= limit_seqno)
+		return seqno >= base && seqno <= sum-1 ? 1 : -1;
+	else {
+		int new_upper_bound = base + window_size - limit_seqno - 2;
+		return seqno >= base || seqno <= new_upper_bound ? 1 : -1;	
+	}
+}
+
+/*** define useful variable ***/
+
+unsigned int send_base=0;
+unsigned int next_seqnum=0;
+unsigned int rcv_base=0;
 
 
 /********* STUDENTS WRITE THE NEXT SEVEN ROUTINES *********/
@@ -110,7 +141,7 @@ void
 A_output (message)
     struct msg message;
 {
- 
+	
 }
 
 /* called from layer 3, when a packet arrives for layer 4 */
