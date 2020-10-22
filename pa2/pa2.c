@@ -134,6 +134,48 @@ unsigned int next_seqnum=0;
 unsigned int rcv_base=0;
 
 
+/*** build a sender buffer ***/
+/* when upper layer want to send a msg, but the window is not avail, the msg should be buffered, implemented as FIFO */
+/* int num_entry = SND_BUFF_SIZE / 8;
+num_entry = SND_BUFF_SIZE % 8 == 0 ? num_entry : num_entry + 1 ;
+unsigned char [num_entry] buffer = {0};
+struct pkt [SND_BUFF_SIZE];  wrong implementation, was thinking buffer the packet.. should just buffer msg. since the sender only retransmit the next missing packet 
+so only one timer is sufficient  */
+
+#define SND_BUFF_SIZE 50
+struct msg [SND_BUFF_SIZE] snd_buffer;
+int head=0;
+int tail=0;
+int size=0;
+int enqueue(struct msg new_msg){
+	extern struct msg [] snd_buffer;
+	extern int head;
+	extern int size;
+	if(size==SND_BUFF_SIZE)
+		return -1;
+	else { 
+		snd_buffer[head++] = new_msg;
+		if(head==SND_BUFF_SIZE) 
+			head=0;
+		size++;
+		return 0;
+	}
+}
+struct msg * deque() {
+	extern struct msg [] snd_buffer;
+	extern int size;
+	extern int tail;
+	if(size==0)
+		return NULL;
+	else {
+		struct msg * to_ret = &(snd_buffer[tail++]);
+		size--;
+		if(tail==SND_BUFF_SIZE)
+			tail = 0;
+		return to_ret;	
+	}		
+}
+
 /********* STUDENTS WRITE THE NEXT SEVEN ROUTINES *********/
 
 /* called from layer 5, passed the data to be sent to other side */
