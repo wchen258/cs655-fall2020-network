@@ -143,12 +143,12 @@ struct pkt [SND_BUFF_SIZE];  wrong implementation, was thinking buffer the packe
 so only one timer is sufficient  */
 
 #define SND_BUFF_SIZE 50
-struct msg [SND_BUFF_SIZE] snd_buffer;
+struct msg snd_buffer [SND_BUFF_SIZE];
 int head=0;
 int tail=0;
 int size=0;
 int enqueue(struct msg new_msg){
-	extern struct msg [] snd_buffer;
+	extern struct msg snd_buffer [] ;
 	extern int head;
 	extern int size;
 	if(size==SND_BUFF_SIZE)
@@ -162,7 +162,7 @@ int enqueue(struct msg new_msg){
 	}
 }
 struct msg * deque() {
-	extern struct msg [] snd_buffer;
+	extern struct msg snd_buffer [];
 	extern int size;
 	extern int tail;
 	if(size==0)
