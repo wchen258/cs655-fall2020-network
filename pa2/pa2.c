@@ -120,10 +120,10 @@ int check(int base, int seqno, int window_size, int limit_seqno) {
 	}
 	int sum = base + window_size;
 	if (sum-1 <= limit_seqno)
-		return seqno >= base && seqno <= sum-1 ? 1 : -1;
+		return seqno >= base && seqno <= sum-1 ? 1 : 0;
 	else {
 		int new_upper_bound = base + window_size - limit_seqno - 2;
-		return seqno >= base || seqno <= new_upper_bound ? 1 : -1;	
+		return seqno >= base || seqno <= new_upper_bound ? 1 : 0;	
 	}
 }
 
@@ -176,6 +176,17 @@ struct msg * deque() {
 	}		
 }
 
+/* make pkt from A */
+struct pkt make_pkt(struct msgi * msgptr, int send_seqno, int ackno) {
+	struct pkt packet;
+	packet.seqnum = send_seqno;
+	packet.acknum = ackno;
+	packet.checksum = get_checksum_16b(msgptr->data, 20);
+	strcpy(packet.payload, msgptr->data);
+	return packet;
+
+}
+
 /********* STUDENTS WRITE THE NEXT SEVEN ROUTINES *********/
 
 /* called from layer 5, passed the data to be sent to other side */
@@ -183,7 +194,17 @@ void
 A_output (message)
     struct msg message;
 {
-	
+	extern int send_base;
+	extern int next_seqnum;
+	if(check(send_base, next_seqnum, WINDOW_SIZE, LIMIT_SEQNO)) { // first check if the window allows
+		struct outpkt = make_pkt(&message, next_seqnum, next_seqnum);
+		tolayer3(A, outpkt); // TODO: each outpkt also needs a FIFO ( same size to WINDOW SIZE), timer may resend.keep dequing, until find the corr pkt, COPY that and send
+		if(next_seqnum == send_base)  // if the seqnum eq to the base of the sender window, we start the timer
+			starttimer(A, RXMT_TIMEOUT);
+		next_seqnum = wrap_add(next_seqnum, 1, LIMIT_SEQNO); // no matter what, we advance seqnum by 1
+	} else { // if the window not allows
+		enque(message);	// enque the message. deque should happen when A receive ACK, and the A_input would responsible to call tolayer5
+	}	
 }
 
 /* called from layer 3, when a packet arrives for layer 4 */
