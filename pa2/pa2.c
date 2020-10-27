@@ -115,8 +115,8 @@ int wrap_add(int n1, int n2, int limit_seqno){
 /* whether a seqno is within the window check. This return 1 upon avail 0 upon not avail 
  * whenever before send a msg, always use this to check first */
 int check(int base, int seqno, int window_size, int limit_seqno) {
-	if(window_size > limit_seqno) {
-		printf("window_size larger than limit_seqno. This is not handled!\n");
+	if(limit_seqno <= 2 * window_size - 1) {
+		printf("window_size larger than 2*limit_seqno-1. This is not handled! Consider exit directly?\n");
 	}
 	int sum = base + window_size;
 	if (sum-1 <= limit_seqno)
@@ -142,7 +142,7 @@ struct msg snd_buffer [SND_BUFF_SIZE];
 int head=0;
 int tail=0;
 int size=0;
-int enqueue(struct msg new_msg){
+int enque(struct msg new_msg){
 	extern struct msg snd_buffer [] ;
 	extern int head;
 	extern int size;
@@ -174,13 +174,13 @@ struct msg * deque() {
 
 
 /***  Another FIFO for the resend queue   ***/
-struct pkt snd_buffer1 [];
+struct pkt * snd_buffer1;
 int head1=0;
 int tail1=0;
 int size1=0;
 int snd_buffer1_size;
-int enqueue1(struct pkt new_pkt){
-	extern struct pkt snd_buffer1 [] ;
+int enque1(struct pkt new_pkt){
+	extern struct pkt * snd_buffer1;
 	extern int head1;
 	extern int size1;
 	if(size1==snd_buffer1_size)
@@ -194,7 +194,7 @@ int enqueue1(struct pkt new_pkt){
 	}
 }
 struct pkt * deque1() {
-	extern struct pkt snd_buffer1 [];
+	extern struct pkt * snd_buffer1;
 	extern int size1;
 	extern int tail1;
 	if(size1==0)
@@ -206,9 +206,10 @@ struct pkt * deque1() {
 			tail1 = 0;
 		return to_ret;	
 	}		
+  
 }
 struct pkt * peek1() { // resend buff has this peek, due to retransmission might still fail. e.g. Do not delete the UN ACK pkt so fast
-	extern struct pkt snd_buffer1 [];
+	extern struct pkt * snd_buffer1;
 	extern int size1;
 	extern int tail1;
 	if(size1==0)
@@ -220,7 +221,7 @@ struct pkt * peek1() { // resend buff has this peek, due to retransmission might
 }
 
 /* make pkt from A */
-struct pkt make_pkt(struct msgi * msgptr, int send_seqno, int ackno) {
+struct pkt make_pkt(struct msg * msgptr, int send_seqno, int ackno) {
 	struct pkt packet;
 	packet.seqnum = send_seqno;
 	packet.acknum = ackno;
@@ -237,10 +238,10 @@ void
 A_output (message)
     struct msg message;
 {
-	extern int send_base;
-	extern int next_seqnum;    // Do I need to add extern int WINDOW_SIZE etc to make them visible ? or that's by default accessible?
-	if(check(send_base, next_seqnum, WINDOW_SIZE, LIMIT_SEQNO)) { // first check if the window allows
-		struct outpkt = make_pkt(&message, next_seqnum, next_seqnum);
+	extern unsigned int send_base;
+	extern unsigned int next_seqnum;    // Do I need to add extern int WINDOW_SIZE etc to make them visible ? or that's by default accessible?
+  if(check(send_base, next_seqnum, WINDOW_SIZE, LIMIT_SEQNO)) { // first check if the window allows
+		struct pkt outpkt = make_pkt(&message, next_seqnum, next_seqnum);
 		tolayer3(A, outpkt); //  each outpkt also needs a FIFO ( same size to WINDOW SIZE), timer may resend.keep peek & dequing, until find the corr pkt, peek that and send
         enque1(outpkt);
 		if(next_seqnum == send_base)  // if the seqnum eq to the base of the sender window, we start the timer
@@ -271,9 +272,9 @@ A_timerinterrupt (void)
 void
 A_init (void)
 {
-	extern struct pkt snd_buffer1 [];
+	extern struct pkt * snd_buffer1;
 	extern int WINDOW_SIZE;
-	&snd_buffer1 = (struct pkt *) malloc(WINDOW_SIZE * sizeof(struct pkt));
+	snd_buffer1 = (struct pkt *) malloc(WINDOW_SIZE * sizeof(struct pkt));
 } 
 
 /* called from layer 3, when a packet arrives for layer 4 at B*/
