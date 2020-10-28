@@ -63,49 +63,21 @@ void stoptimer(int AorB);
 
 extern int WINDOW_SIZE;  // size of the window
 extern int
-    LIMIT_SEQNO;  // when sequence number reaches this value, // it wraps around
+    LIMIT_SEQNO;  // when sequence number reaches this value, it wraps around
 extern double RXMT_TIMEOUT;  // retransmission timeout
 extern int TRACE;            // trace level, for your debug purpose
 extern double time_now;      // simulation time, for your debug purpose
 
 /********* YOU MAY ADD SOME ROUTINES HERE ********/
 
-/***  checksum computation ***/
+typedef unsigned char byte;
 
-/* 1's complementary addition arithmetic */
-char addition(char c1, char c2) {
-    unsigned int sum =
-        (unsigned int)(unsigned char)c1 + (unsigned int)(unsigned char)c2;
-    return (sum >> 8) ? (char)(sum + 0b1) : (char)sum;
-}
-
-/* 1's comp addition with 16 bits */
-unsigned int addition_16b(unsigned int cs1, unsigned int cs2) {
-    unsigned long int sum = (unsigned long int)cs1 + (unsigned long int)cs2;
-    return (sum >> 16) ? (unsigned int)(sum + 0b0) : (unsigned int)sum;
-}
-
-/* helper for addition_16b */
-unsigned int pack(char c1, char c2) {
-    return (((unsigned int)(unsigned char)c1) << 8) +
-           ((unsigned int)(unsigned char)c2);
-}
-
-/* calculate checksum int. p.s. char to int conversion not that natural, as many
- * bits are redundant*/
-int get_checksum(char* s, int length) {
-    char result = s[0];
-    for (int i = 1; i < length; i++)
-        result = addition(result, s[i]);
-    return (int)result;
-}
-
-/* better version of checksum, not support odd length array */
-int get_checksum_16b(char* s, int length) {
-    unsigned int result = pack(s[0], s[1]);
-    for (int i = 2; i + 1 < length; i += 2)
-        result = addition_16b(result, pack(s[i], s[i + 1]));
-    return (int)result;
+/**  checksum computation */
+byte get_checksum(void* p, int length) {
+    byte *s = (byte *)p, result = 0;
+    for (int i = 0; i < length; ++i)
+        result += s[i];
+    return result;
 }
 
 /*** useful operation ***/
@@ -213,12 +185,13 @@ struct pkt* peek1() {  // resend buff has this peek, due to retransmission might
 }
 
 /* make pkt from A */
-struct pkt make_pkt(struct msg* msgptr, int send_seqno, int ackno) {
+struct pkt make_pkt(struct msg* p_msg, int seq, int ack) {
     struct pkt packet;
-    packet.seqnum = send_seqno;
-    packet.acknum = ackno;
-    packet.checksum = get_checksum_16b(msgptr->data, 20);
-    strcpy(packet.payload, msgptr->data);
+    packet.seqnum = seq;
+    packet.acknum = ack;
+    packet.checksum = 0;
+    memcpy(packet.payload, p_msg->data, sizeof(struct msg));
+    packet.checksum = (byte)~get_checksum(&packet, sizeof(struct pkt));
     return packet;
 }
 
@@ -230,7 +203,7 @@ void A_output(struct msg message) {
     // them visible ? or that's by default accessible?
     if (check(send_base, next_seqnum, WINDOW_SIZE,
               LIMIT_SEQNO)) {  // first check if the window allows
-        struct pkt outpkt = make_pkt(&message, next_seqnum, next_seqnum);
+        struct pkt outpkt = make_pkt(&message, next_seqnum, 0);
         tolayer3(
             A, outpkt);  //  each outpkt also needs a FIFO ( same size to WINDOW
                          //  SIZE), timer may resend.keep peek & dequing, until
