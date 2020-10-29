@@ -1,11 +1,16 @@
 #include <fcntl.h>
 #include <netinet/in.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <strings.h>
 #include <sys/file.h>
 #include <sys/time.h>
 #include <sys/types.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <deque>
+#include <iostream>
+#include <vector>
+
+using namespace std;
 
 /* ******************************************************************
    ARQ NETWORK EMULATOR: VERSION 1.1  J.F.Kurose
@@ -74,194 +79,158 @@ typedef unsigned char byte;
 
 /**  checksum computation */
 byte get_checksum(void* p, int length) {
-    byte *s = (byte *)p, result = 0;
+    byte *s = (byte*)p, result = 0;
     for (int i = 0; i < length; ++i)
         result += s[i];
     return result;
 }
 
-/*** useful operation ***/
+unsigned wrap_add(unsigned n1, unsigned n2, unsigned period) {
+    return (n1 + n2) % period;
+}
 
-/* wrap around addition, since LIMIT_SEQNO upon reach would fall back to zero,
- * an wrap addition might be handy whenever to add seqno */
-/* e.g. if limit=5, n1=3, n2=3, it returns 0 , limit should be LIMIT_SEQNO.
- * Useful when advancing the seqno and move rcv/send window base  */
-int wrap_add(int n1, int n2, int limit_seqno) {
-    int sum = n1 + n2;
-    return (sum > limit_seqno) ? sum - limit_seqno - 1 : sum;
+unsigned wrap_sub(unsigned n1, unsigned n2, unsigned period) {
+    return (n1 + period - n2) % period;
 }
 
 /* whether a seqno is within the window check. This return 1 upon avail 0 upon
  * not avail whenever before send a msg, always use this to check first */
-int check(int base, int seqno, int window_size, int limit_seqno) {
-    if (limit_seqno <= 2 * window_size - 1) {
-        printf(
-            "window_size larger than 2*limit_seqno-1. This is not handled! "
-            "Consider exit directly?\n");
-    }
-    int sum = base + window_size;
-    if (sum - 1 <= limit_seqno)
-        return seqno >= base && seqno <= sum - 1 ? 1 : 0;
-    else {
-        int new_upper_bound = base + window_size - limit_seqno - 2;
-        return seqno >= base || seqno <= new_upper_bound ? 1 : 0;
-    }
-}
+// int check(int base, int seqno, int window_size, int limit_seqno) {
+//     if (limit_seqno <= 2 * window_size - 1) {
+//         printf(
+//             "window_size larger than 2*limit_seqno-1. This is not handled! "
+//             "Consider exit directly?\n");
+//     }
+//     int sum = base + window_size;
+//     if (sum - 1 <= limit_seqno)
+//         return seqno >= base && seqno <= sum - 1 ? 1 : 0;
+//     else {
+//         int new_upper_bound = base + window_size - limit_seqno - 2;
+//         return seqno >= base || seqno <= new_upper_bound ? 1 : 0;
+//     }
+// }
 
 /*** define useful variable ***/
+unsigned first_unacked = FIRST_SEQNO;
+deque<pkt> A_queue;
 
-unsigned int send_base = 0;
-unsigned int next_seqnum = 0;
-unsigned int rcv_base = 0;
-
-/*** build a sender buffer ***/
-/* when upper layer want to send a msg, but the window is not avail, the msg
- * should be buffered, implemented as FIFO */
-
-#define SND_BUFF_SIZE 50
-struct msg snd_buffer[SND_BUFF_SIZE];
-int head = 0;
-int tail = 0;
-int size = 0;
-int enque(struct msg new_msg) {
-    if (size == SND_BUFF_SIZE)
-        return -1;
-    else {
-        snd_buffer[head++] = new_msg;
-        if (head == SND_BUFF_SIZE)
-            head = 0;
-        size++;
-        return 0;
-    }
-}
-struct msg* deque() {
-    if (size == 0)
-        return NULL;
-    else {
-        struct msg* to_ret = &(snd_buffer[tail++]);
-        size--;
-        if (tail == SND_BUFF_SIZE)
-            tail = 0;
-        return to_ret;
-    }
-}
-
-/***  Another FIFO for the resend queue   ***/
-struct pkt* snd_buffer1;
-int head1 = 0;
-int tail1 = 0;
-int size1 = 0;
-int snd_buffer1_size;
-int enque1(struct pkt new_pkt) {
-    if (size1 == snd_buffer1_size)
-        return -1;
-    else {
-        snd_buffer1[head1++] = new_pkt;
-        if (head1 == snd_buffer1_size)
-            head1 = 0;
-        size1++;
-        return 0;
-    }
-}
-struct pkt* deque1() {
-    if (size1 == 0)
-        return NULL;
-    else {
-        struct pkt* to_ret = &(snd_buffer1[tail1++]);
-        size1--;
-        if (tail1 == snd_buffer1_size)
-            tail1 = 0;
-        return to_ret;
-    }
-}
-struct pkt* peek1() {  // resend buff has this peek, due to retransmission might
-                       // still fail. e.g. Do not delete the UN ACK pkt so fast
-    if (size1 == 0)
-        return NULL;
-    else {
-        struct pkt* to_ret = &(snd_buffer1[tail1]);
-        return to_ret;
-    }
-}
+unsigned next_expected = FIRST_SEQNO;
+unsigned next_expected_index = 0;
+vector<pair<bool, char[20]>> B_window;
 
 /* make pkt from A */
-struct pkt make_pkt(struct msg* p_msg, int seq, int ack) {
+struct pkt make_pkt(const void* p_msg, int seq, int ack) {
     struct pkt packet;
     packet.seqnum = seq;
     packet.acknum = ack;
     packet.checksum = 0;
-    memcpy(packet.payload, p_msg->data, sizeof(struct msg));
+    memcpy(packet.payload, p_msg, sizeof(struct msg));
     packet.checksum = (byte)~get_checksum(&packet, sizeof(struct pkt));
     return packet;
 }
 
 /********* STUDENTS WRITE THE NEXT SEVEN ROUTINES *********/
 
-/* called from layer 5, passed the data to be sent to other side */
+/** called from layer 5, passed the data to be sent to other side */
 void A_output(struct msg message) {
-    // Do I need to add extern int WINDOW_SIZE etc to make
-    // them visible ? or that's by default accessible?
-    if (check(send_base, next_seqnum, WINDOW_SIZE,
-              LIMIT_SEQNO)) {  // first check if the window allows
-        struct pkt outpkt = make_pkt(&message, next_seqnum, 0);
-        tolayer3(
-            A, outpkt);  //  each outpkt also needs a FIFO ( same size to WINDOW
-                         //  SIZE), timer may resend.keep peek & dequing, until
-                         //  find the corr pkt, peek that and send
-        enque1(outpkt);
-        if (next_seqnum == send_base)  // if the seqnum eq to the base of the
-                                       // sender window, we start the timer
+    cout << "A_output\n";
+    unsigned queue_size = A_queue.size();
+    unsigned seq = wrap_add(first_unacked, queue_size, LIMIT_SEQNO);
+    struct pkt outpkt = make_pkt(&message, seq, 0);
+    A_queue.push_back(outpkt);
+    if (queue_size < WINDOW_SIZE) {
+        tolayer3(A, outpkt);
+        if (!queue_size)  // if it's the first packet in the queue
             starttimer(A, RXMT_TIMEOUT);
-        next_seqnum =
-            wrap_add(next_seqnum, 1,
-                     LIMIT_SEQNO);  // no matter what, we advance seqnum by 1
-    } else {                        // if the window not allows
-        enque(message);  // enque the message. deque should happen when A
-                         // receive ACK, and the A_input would responsible to
-                         // call tolayer5
     }
 }
 
-/* called from layer 3, when a packet arrives for layer 4 */
-void A_input(struct pkt packet) {}
-
-/* called when A's timer goes off */
-void A_timerinterrupt(void) {}
-
-/* the following routine will be called once (only) before any other */
-/* entity A routines are called. You can use it to do any initialization */
-void A_init(void) {
-    snd_buffer1 = (struct pkt*)malloc(WINDOW_SIZE * sizeof(struct pkt));
+/** called from layer 3, when a packet arrives for layer 4 */
+void A_input(struct pkt packet) {
+    cout << "A_input\n";
+    cout << A_queue.size() << endl;
+    if (get_checksum(&packet, sizeof(struct pkt)) == 0xFF) {
+        unsigned n_acked = wrap_sub(packet.acknum, first_unacked, LIMIT_SEQNO);
+        if (n_acked && n_acked <= WINDOW_SIZE) {
+            stoptimer(A);
+            first_unacked = packet.acknum;
+            for (int i = 0; i < n_acked; ++i)
+                A_queue.pop_front();
+            unsigned first_to_send = WINDOW_SIZE - n_acked,
+                     first_outside_window =
+                         min<unsigned>(WINDOW_SIZE, A_queue.size());
+            while (first_to_send < first_outside_window)
+                tolayer3(A, A_queue[first_to_send++]);
+            if (!A_queue.empty())
+                starttimer(A, RXMT_TIMEOUT);
+        }
+    }
 }
 
-/* called from layer 3, when a packet arrives for layer 4 at B*/
-void B_input(struct pkt packet) {}
+/** called when A's timer goes off */
+void A_timerinterrupt(void) {
+    printf("A_inter\n");
+    cout << A_queue.size() << endl;
+    tolayer3(A, A_queue.front());
+    starttimer(A, RXMT_TIMEOUT);
+}
 
-/* the following rouytine will be called once (only) before any other */
-/* entity B routines are called. You can use it to do any initialization */
-void B_init(void) {}
+/** the following routine will be called once (only) before any other
+ entity A routines are called. You can use it to do any initialization */
+void A_init(void) {}
 
-/* called at end of simulation to print final statistics */
+/** called from layer 3, when a packet arrives for layer 4 at B*/
+void B_input(struct pkt packet) {
+    printf("\tB_input\n");
+    if (get_checksum(&packet, sizeof(struct pkt)) == 0xFF) {
+        unsigned offset = wrap_sub(packet.seqnum, next_expected, LIMIT_SEQNO);
+        if (offset < WINDOW_SIZE) {
+            unsigned index = wrap_add(next_expected_index, offset, WINDOW_SIZE);
+            B_window[index].first = true;
+            memcpy(&B_window[index].second, packet.payload, sizeof(msg));
+            if (!offset)
+                do {
+                    tolayer5(B_window[next_expected_index].second);
+                    B_window[next_expected_index].first = false;
+                    next_expected_index =
+                        wrap_add(next_expected_index, 1, WINDOW_SIZE);
+                    next_expected = wrap_add(next_expected, 1, LIMIT_SEQNO);
+                } while (B_window[next_expected_index].first);
+        }
+        struct pkt ack = make_pkt(packet.payload, 0, next_expected);
+        tolayer3(B, ack);
+    }
+}
+
+/** the following rouytine will be called once (only) before any other
+ entity B routines are called. You can use it to do any initialization */
+void B_init(void) {
+    B_window.resize(WINDOW_SIZE);
+}
+
+/** called at end of simulation to print final statistics */
 void Simulation_done(void) {
     /* TO PRINT THE STATISTICS, FILL IN THE DETAILS BY PUTTING VARIBALE NAMES.
      * DO NOT CHANGE THE FORMAT OF PRINTED OUTPUT */
-    printf("\n\n===============STATISTICS======================= \n\n");
-    printf(
-        "Number of original packets transmitted by A: <YourVariableHere> \n");
-    printf("Number of retransmissions by A: <YourVariableHere> \n");
-    printf(
-        "Number of data packets delivered to layer 5 at B: <YourVariableHere> "
-        "\n");
-    printf("Number of ACK packets sent by B: <YourVariableHere> \n");
-    printf("Number of corrupted packets: <YourVariableHere> \n");
-    printf("Ratio of lost packets: <YourVariableHere> \n");
-    printf("Ratio of corrupted packets: <YourVariableHere> \n");
-    printf("Average RTT: <YourVariableHere> \n");
-    printf("Average communication time: <YourVariableHere> \n");
-    printf("==================================================");
+    // printf("\n\n===============STATISTICS======================= \n\n");
+    // printf(
+    //     "Number of original packets transmitted by A: <YourVariableHere>
+    //     \n");
+    // printf("Number of retransmissions by A: <YourVariableHere> \n");
+    // printf(
+    //     "Number of data packets delivered to layer 5 at B: <YourVariableHere>
+    //     "
+    //     "\n");
+    // printf("Number of ACK packets sent by B: <YourVariableHere> \n");
+    // printf("Number of corrupted packets: <YourVariableHere> \n");
+    // printf("Ratio of lost packets: <YourVariableHere> \n");
+    // printf("Ratio of corrupted packets: <YourVariableHere> \n");
+    // printf("Average RTT: <YourVariableHere> \n");
+    // printf("Average communication time: <YourVariableHere> \n");
+    // printf("==================================================");
 
     /* PRINT YOUR OWN STATISTIC HERE TO CHECK THE CORRECTNESS OF YOUR PROGRAM */
-    printf("\nEXTRA: \n");
+    // printf("\nEXTRA: \n");
     /* EXAMPLE GIVEN BELOW */
     /* printf("Example statistic you want to check e.g. number of ACK packets
      * received by A : <YourVariableHere>"); */
@@ -307,7 +276,7 @@ void insertevent(struct event* p);
 #define ON 1
 
 int TRACE = 0; /* for debugging purpose */
-int fileoutput;
+FILE* fileoutput;
 double time_now = 0.000;
 int WINDOW_SIZE;
 int LIMIT_SEQNO;
@@ -411,8 +380,8 @@ void init(void) /* initialize the simulator */
     scanf("%d", &seed[0]);
     for (i = 1; i < 5; i++)
         seed[i] = seed[0] + i;
-    fileoutput = open("OutputFile", O_CREAT | O_WRONLY | O_TRUNC, 0644);
-    if (fileoutput < 0)
+    fileoutput = fopen("OutputFile", "w");
+    if (!fileoutput)
         exit(1);
     ntolayer3 = 0;
     nlost = 0;
@@ -445,9 +414,8 @@ double mrand(int i) {
 /*  The next set of routines handle the event list   */
 /*****************************************************/
 void generate_next_arrival(void) {
-    double x, log(), ceil();
+    double x;
     struct event* evptr;
-    //   char *malloc(); commented out by matta 10/17/2013
 
     if (TRACE > 2)
         printf("          GENERATE NEXT ARRIVAL: creating new arrival\n");
@@ -540,7 +508,6 @@ void starttimer(int AorB, double increment)
 {
     struct event* q;
     struct event* evptr;
-    // char *malloc(); commented out by matta 10/17/2013
 
     if (TRACE > 2)
         printf("          START TIMER: starting timer at %f\n", time_now);
@@ -567,7 +534,6 @@ void tolayer3(int AorB, struct pkt packet)
 {
     struct pkt* mypktptr;
     struct event *evptr, *q;
-    // char *malloc(); commented out by matta 10/17/2013
     double lastime, x;
     int i;
 
@@ -630,5 +596,5 @@ void tolayer3(int AorB, struct pkt packet)
 }
 
 void tolayer5(char datasent[]) {
-    write(fileoutput, datasent, 20);
+    fwrite(datasent, 1, 20, fileoutput);
 }
