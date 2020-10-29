@@ -55,7 +55,7 @@ struct pkt {
 
 /*- Declarations ------------------------------------------------------------*/
 void restart_rxmt_timer(void);
-void tolayer3(int AorB, struct pkt packet);
+void tolayer3(int AorB, pkt packet);
 void tolayer5(char datasent[20]);
 
 void starttimer(int AorB, double increment);
@@ -93,52 +93,40 @@ unsigned wrap_sub(unsigned n1, unsigned n2, unsigned period) {
     return (n1 + period - n2) % period;
 }
 
-/* whether a seqno is within the window check. This return 1 upon avail 0 upon
- * not avail whenever before send a msg, always use this to check first */
-// int check(int base, int seqno, int window_size, int limit_seqno) {
-//     if (limit_seqno <= 2 * window_size - 1) {
-//         printf(
-//             "window_size larger than 2*limit_seqno-1. This is not handled! "
-//             "Consider exit directly?\n");
-//     }
-//     int sum = base + window_size;
-//     if (sum - 1 <= limit_seqno)
-//         return seqno >= base && seqno <= sum - 1 ? 1 : 0;
-//     else {
-//         int new_upper_bound = base + window_size - limit_seqno - 2;
-//         return seqno >= base || seqno <= new_upper_bound ? 1 : 0;
-//     }
-// }
+/** variables for A */
+deque<pkt> A_queue;  // A's linear buffer, [0:WINDOW_SIZE] for packets sent but
+                     // not ACKed, [WINDOW_SIZE:] for packets wait to be sent
+unsigned first_unacked = FIRST_SEQNO;  // sequence number of A_deque[0]
 
-/*** define useful variable ***/
-unsigned first_unacked = FIRST_SEQNO;
-deque<pkt> A_queue;
+/** variables for B */
+vector<pair<bool, char[20]>>
+    B_window;  // B's cicular buffer (length is WINDOW_SIZE), for packets
+               // received but not delivered
+unsigned next_expected =
+    FIRST_SEQNO;  // sequence number of the next expected packet
+unsigned next_expected_index =
+    0;  // index of the next expected packet in B_window
 
-unsigned next_expected = FIRST_SEQNO;
-unsigned next_expected_index = 0;
-vector<pair<bool, char[20]>> B_window;
-
-/* make pkt from A */
-struct pkt make_pkt(const void* p_msg, int seq, int ack) {
-    struct pkt packet;
+pkt make_pkt(const void* p_msg, int seq, int ack) {
+    pkt packet;
     packet.seqnum = seq;
     packet.acknum = ack;
     packet.checksum = 0;
-    memcpy(packet.payload, p_msg, sizeof(struct msg));
-    packet.checksum = (byte)~get_checksum(&packet, sizeof(struct pkt));
+    memcpy(packet.payload, p_msg, sizeof(msg));
+    packet.checksum = (byte)~get_checksum(&packet, sizeof(pkt));
     return packet;
 }
 
 /********* STUDENTS WRITE THE NEXT SEVEN ROUTINES *********/
 
 /** called from layer 5, passed the data to be sent to other side */
-void A_output(struct msg message) {
+void A_output(msg message) {
     cout << "A_output\n";
     unsigned queue_size = A_queue.size();
     unsigned seq = wrap_add(first_unacked, queue_size, LIMIT_SEQNO);
-    struct pkt outpkt = make_pkt(&message, seq, 0);
+    pkt outpkt = make_pkt(&message, seq, 0);
     A_queue.push_back(outpkt);
-    if (queue_size < WINDOW_SIZE) {
+    if (queue_size < WINDOW_SIZE) {  // the new packet is within window
         tolayer3(A, outpkt);
         if (!queue_size)  // if it's the first packet in the queue
             starttimer(A, RXMT_TIMEOUT);
@@ -146,31 +134,39 @@ void A_output(struct msg message) {
 }
 
 /** called from layer 3, when a packet arrives for layer 4 */
-void A_input(struct pkt packet) {
+void A_input(pkt packet) {
     cout << "A_input\n";
-    cout << A_queue.size() << endl;
-    if (get_checksum(&packet, sizeof(struct pkt)) == 0xFF) {
-        unsigned n_acked = wrap_sub(packet.acknum, first_unacked, LIMIT_SEQNO);
-        if (n_acked && n_acked <= WINDOW_SIZE) {
+    if (get_checksum(&packet, sizeof(pkt)) == 0xFF) {
+        unsigned n_acked =
+            wrap_sub(packet.acknum, first_unacked,
+                     LIMIT_SEQNO);  // the number of newly acked packets, range
+                                    // [0, WINDOW_SIZE]
+        if (n_acked) {
             stoptimer(A);
             first_unacked = packet.acknum;
-            for (int i = 0; i < n_acked; ++i)
+            for (int i = 0; i < n_acked; ++i)  // remove ACKed packets
                 A_queue.pop_front();
             unsigned first_to_send = WINDOW_SIZE - n_acked,
                      first_outside_window =
                          min<unsigned>(WINDOW_SIZE, A_queue.size());
-            while (first_to_send < first_outside_window)
+            while (first_to_send <
+                   first_outside_window)  // after sliding window, send newly
+                                          // included packets
                 tolayer3(A, A_queue[first_to_send++]);
             if (!A_queue.empty())
                 starttimer(A, RXMT_TIMEOUT);
+        } else if (!A_queue.empty()) {  // duplicate ack when there exists
+                                        // unACKed packet
+            stoptimer(A);
+            tolayer3(A, A_queue.front());
+            starttimer(A, RXMT_TIMEOUT);
         }
     }
 }
 
 /** called when A's timer goes off */
 void A_timerinterrupt(void) {
-    printf("A_inter\n");
-    cout << A_queue.size() << endl;
+    cout << "A_inter\n";
     tolayer3(A, A_queue.front());
     starttimer(A, RXMT_TIMEOUT);
 }
@@ -180,24 +176,32 @@ void A_timerinterrupt(void) {
 void A_init(void) {}
 
 /** called from layer 3, when a packet arrives for layer 4 at B*/
-void B_input(struct pkt packet) {
-    printf("\tB_input\n");
-    if (get_checksum(&packet, sizeof(struct pkt)) == 0xFF) {
+void B_input(pkt packet) {
+    cout << "\tB_input\n";
+    if (get_checksum(&packet, sizeof(pkt)) == 0xFF) {
         unsigned offset = wrap_sub(packet.seqnum, next_expected, LIMIT_SEQNO);
-        if (offset < WINDOW_SIZE) {
-            unsigned index = wrap_add(next_expected_index, offset, WINDOW_SIZE);
-            B_window[index].first = true;
-            memcpy(&B_window[index].second, packet.payload, sizeof(msg));
-            if (!offset)
-                do {
-                    tolayer5(B_window[next_expected_index].second);
-                    B_window[next_expected_index].first = false;
-                    next_expected_index =
-                        wrap_add(next_expected_index, 1, WINDOW_SIZE);
-                    next_expected = wrap_add(next_expected, 1, LIMIT_SEQNO);
-                } while (B_window[next_expected_index].first);
+        if (offset < WINDOW_SIZE) {  // within window
+            unsigned index =
+                wrap_add(next_expected_index, offset,
+                         WINDOW_SIZE);         // the place to buffer the packet
+            if (!B_window[index].first) {      // new packet
+                B_window[index].first = true;  // mark as full
+                memcpy(&B_window[index].second, packet.payload, sizeof(msg));
+                if (!offset)  // it's the expected packet
+                    do {
+                        tolayer5(B_window[next_expected_index]
+                                     .second);  // in-order delivery
+                        B_window[next_expected_index].first =
+                            false;  // mark as empty
+                        next_expected_index =
+                            wrap_add(next_expected_index, 1, WINDOW_SIZE);
+                        next_expected = wrap_add(next_expected, 1, LIMIT_SEQNO);
+                    } while (B_window[next_expected_index].first);
+            }
         }
-        struct pkt ack = make_pkt(packet.payload, 0, next_expected);
+        pkt ack =
+            make_pkt(packet.payload, 0,
+                     next_expected);  // whether within window or not, send ack
         tolayer3(B, ack);
     }
 }
@@ -205,7 +209,7 @@ void B_input(struct pkt packet) {
 /** the following rouytine will be called once (only) before any other
  entity B routines are called. You can use it to do any initialization */
 void B_init(void) {
-    B_window.resize(WINDOW_SIZE);
+    B_window.resize(WINDOW_SIZE);  // allocate fixed-size space
 }
 
 /** called at end of simulation to print final statistics */
@@ -253,10 +257,10 @@ to, and you defeinitely should not have to modify
 ******************************************************************/
 
 struct event {
-    double evtime;      /* event time */
-    int evtype;         /* event type code */
-    int eventity;       /* entity where event occurs */
-    struct pkt* pktptr; /* ptr to packet (if any) assoc w/ this event */
+    double evtime; /* event time */
+    int evtype;    /* event type code */
+    int eventity;  /* entity where event occurs */
+    pkt* pktptr;   /* ptr to packet (if any) assoc w/ this event */
     struct event* prev;
     struct event* next;
 };
@@ -293,8 +297,8 @@ unsigned int seed[5]; /* seed used in the pseudo-random generator */
 
 int main(int argc, char** argv) {
     struct event* eventptr;
-    struct msg msg2give;
-    struct pkt pkt2give;
+    msg msg2give;
+    pkt pkt2give;
 
     int i, j;
 
@@ -529,10 +533,10 @@ void starttimer(int AorB, double increment)
 }
 
 /************************** TOLAYER3 ***************/
-void tolayer3(int AorB, struct pkt packet)
+void tolayer3(int AorB, pkt packet)
 /* A or B is trying to stop timer */
 {
-    struct pkt* mypktptr;
+    pkt* mypktptr;
     struct event *evptr, *q;
     double lastime, x;
     int i;
@@ -549,7 +553,7 @@ void tolayer3(int AorB, struct pkt packet)
 
     /* make a copy of the packet student just gave me since he/she may decide */
     /* to do something with the packet after we return back to him/her */
-    mypktptr = (struct pkt*)malloc(sizeof(struct pkt));
+    mypktptr = (pkt*)malloc(sizeof(pkt));
     mypktptr->seqnum = packet.seqnum;
     mypktptr->acknum = packet.acknum;
     mypktptr->checksum = packet.checksum;
