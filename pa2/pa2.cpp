@@ -88,7 +88,9 @@ struct stat
     int ack_B = 0;
     int corrupt = 0;
     vector<double> rtts;
+    vector<double> cmts;
     deque<pair<pkt, double>> traced;
+    deque<pair<pkt, double>> traced_cmt;
 };
 
 #define ORIGIN_A 0
@@ -100,6 +102,7 @@ struct stat
 #define UNTRACE 6
 #define INPUT_A 7
 #define TIMEOUT 8
+#define INPUT_A_CMT 9
 
 /**  checksum computation */
 byte get_checksum(void *p, int length)
@@ -144,21 +147,41 @@ void collect_stat(stat *s, int evt, pkt *packet)
     case CORRUPT:
         s->corrupt++;
         break;
-    case TRACE_PKT:
+    case TRACE_PKT: // for rtt & cmt calc
         s->traced.push_back(make_pair(*packet, time_now));
+        s->traced_cmt.push_back(make_pair(*packet, time_now));
         break;
-    case INPUT_A:
-        if(!s->traced.size()) break;
+    case INPUT_A_CMT:
+        if(!s->traced_cmt.size()) break;
+        tracker = 0;
+        for (int i = 0; i < (s->traced_cmt).size(); i++)
+        {
+            struct pkt p = s->traced_cmt[i].first;
+            double previous_time = s->traced_cmt[i].second;
+            s->cmts.push_back(time_now - previous_time);
+            if (packet->acknum - 1 == p.seqnum)
+            {
+                tracker = i;
+                break;
+            }
+        }
+        s->traced_cmt.erase(s->traced_cmt.begin(), s->traced_cmt.begin() + tracker + 1);
+        break;
+    case INPUT_A: // for rtt calc
+        if (!s->traced.size())
+            break;
         if (packet->acknum - 1 == s->traced.front().first.seqnum)
         {
             double interval = time_now - s->traced.front().second;
             if (interval < RXMT_TIMEOUT)
+            {
                 s->rtts.push_back(time_now - s->traced.front().second);
+            }
             s->traced.pop_front();
         }
         else
         {
-            tracker=0;
+            tracker = 0;
             for (int i = 0; i < (s->traced).size(); i++)
             {
                 struct pkt p = s->traced[i].first;
@@ -172,8 +195,9 @@ void collect_stat(stat *s, int evt, pkt *packet)
         }
         break;
     case TIMEOUT:
-        if(!s->traced.size()) break;
-        tracker=0;
+        if (!s->traced.size())
+            break;
+        tracker = 0;
         for (int i = 0; i < (s->traced).size(); i++)
         {
             struct pkt p = s->traced[i].first;
@@ -249,6 +273,7 @@ void A_input(pkt packet)
                      LIMIT_SEQNO); // the number of newly acked packets, range
                                    // [0, WINDOW_SIZE]
         collect_stat(&s, INPUT_A, &packet);
+        collect_stat(&s, INPUT_A_CMT, &packet);
         if (n_acked)
         {
             stoptimer(A);
@@ -354,9 +379,14 @@ void Simulation_done(void)
                        ((float)s.origin_A + s.retrans_A + s.ack_B - s.retrans_A + s.corrupt);
 
     double rtt;
-    for(auto& n: s.rtts)
+    for (auto &n : s.rtts)
         rtt += n;
-    rtt = rtt / s.rtts.size();
+    rtt /= s.rtts.size();
+
+    double cmt_time;
+    for (auto &n: s.cmts)
+        cmt_time += n;
+    cmt_time /= s.cmts.size();
 
     cout << "\n\n===============STATISTICS======================= \n"
          << endl;
@@ -368,7 +398,7 @@ void Simulation_done(void)
     cout << "Ratio of lost packets: " << lost_ratio << endl;
     cout << "Ratio of corrupted packets: " << corr_ratio << endl;
     cout << "Average RTT: " << rtt << endl;
-    cout << "Average communication time: " << endl;
+    cout << "Average communication time: " << cmt_time << endl;
     cout << "==================================================" << endl;
 
     /* PRINT YOUR OWN STATISTIC HERE TO CHECK THE CORRECTNESS OF YOUR PROGRAM */
