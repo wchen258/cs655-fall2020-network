@@ -9,6 +9,7 @@
 #include <deque>
 #include <iostream>
 #include <vector>
+#include <string>
 
 using namespace std;
 
@@ -215,6 +216,23 @@ void collect_stat(stat *s, int evt, pkt *packet)
     }
 }
 
+#define START_TIMER 0
+#define PKT_CORRUPT 1
+
+void print_message(int situation, pkt * packet) {
+    switch (situation)
+    {
+    case START_TIMER:
+        cout << "\tStart timer at " << time_now << " planned inter at " << time_now + RXMT_TIMEOUT << endl;
+        break;
+    case PKT_CORRUPT:
+        cout << "\tPkt corrupted, " << "packet checksum " << packet->checksum << " actual " << (unsigned int) get_checksum(packet, sizeof(pkt)) << endl;
+    
+    default:
+        break;
+    }
+}
+
 /** variables for A */
 deque<pkt> A_queue;                   // A's linear buffer, [0:WINDOW_SIZE] for packets sent but
                                       // not ACKed, [WINDOW_SIZE:] for packets wait to be sent
@@ -247,27 +265,38 @@ pkt make_pkt(const void *p_msg, int seq, int ack)
 /** called from layer 5, passed the data to be sent to other side */
 void A_output(msg message)
 {
-    cout << "A_output\n";
+    cout << "\nA_output at time " << time_now << endl;
+    cout << "\tMessage from A layer 5 " << string(message.data, 20);
+    cout << "\tCurrent sender buffer size " << A_queue.size() << endl;
     unsigned queue_size = A_queue.size();
     unsigned seq = wrap_add(first_unacked, queue_size, LIMIT_SEQNO);
     pkt outpkt = make_pkt(&message, seq, 0);
+    cout << "\tSeqno " << outpkt.seqnum << " expected ackno " <<outpkt.seqnum + 1 << " checksum " << outpkt.checksum << endl;
     A_queue.push_back(outpkt);
     if (queue_size < WINDOW_SIZE)
     { // the new packet is within window
+        cout << "\tFind an empty space in the sneder window. Send to layer3 " << endl;
         tolayer3(A, outpkt);
         collect_stat(&s, ORIGIN_A, &outpkt);
         collect_stat(&s, TRACE_PKT, &outpkt);
-        if (!queue_size) // if it's the first packet in the queue
+        if (!queue_size){ // if it's the first packet in the queue
             starttimer(A, RXMT_TIMEOUT);
+            print_message(START_TIMER,NULL);
+        }
+    } else {
+        cout << "\tSender window has not space. Buffer the packet." << endl;
     }
+    
 }
 
 /** called from layer 3, when a packet arrives for layer 4 */
 void A_input(pkt packet)
 {
-    cout << "A_input\n";
+    cout << "\nA_input at time " << time_now << endl;
     if (get_checksum(&packet, sizeof(pkt)) == 0xFF)
     {
+        cout << "\tChecksum confirmed " << (unsigned int) get_checksum(&packet, sizeof(pkt)) << endl;
+        cout << "\tACKno " << packet.acknum << " first_unacked_no " << first_unacked << endl;
         unsigned n_acked =
             wrap_sub(packet.acknum, first_unacked,
                      LIMIT_SEQNO); // the number of newly acked packets, range
@@ -277,7 +306,9 @@ void A_input(pkt packet)
         if (n_acked)
         {
             stoptimer(A);
+            cout << "\tTimer stops at " << time_now << endl;
             first_unacked = packet.acknum;
+            cout << "\tNumber of pkt acked " << n_acked << endl;
             for (int i = 0; i < n_acked; ++i) // remove ACKed packets
                 A_queue.pop_front();
             unsigned first_to_send = WINDOW_SIZE - n_acked,
@@ -289,32 +320,40 @@ void A_input(pkt packet)
             {
                 collect_stat(&s, ORIGIN_A, &A_queue[first_to_send]);
                 collect_stat(&s, TRACE_PKT, &A_queue[first_to_send]);
+                cout << "\tSend pkt in the queue " << A_queue[first_to_send].seqnum << " payload " << string(A_queue[first_to_send].payload, 20);
                 tolayer3(A, A_queue[first_to_send++]);
             };
             if (!A_queue.empty())
                 starttimer(A, RXMT_TIMEOUT);
+                print_message(START_TIMER,NULL);
         }
         else if (!A_queue.empty())
         { // duplicate ack when there exists
             // unACKed packet
+            cout << "\tDuplicated ACK recieved. Restart timer at " << time_now << " planned inter at " << time_now + RXMT_TIMEOUT << endl;
+            cout << "\tRetransmitted packet seqno " << A_queue.front().seqnum << " payload " << string(A_queue.front().payload, 20);
             stoptimer(A);
             tolayer3(A, A_queue.front());
             collect_stat(&s, RETRAN_A, &A_queue.front());
             starttimer(A, RXMT_TIMEOUT);
         }
     }
-    else
+    else{
         collect_stat(&s, CORRUPT, NULL);
+        print_message(PKT_CORRUPT, &packet);
+    }
 }
 
 /** called when A's timer goes off */
 void A_timerinterrupt(void)
 {
-    cout << "A_inter\n";
+    cout << "\nA_inter at time " << time_now << endl;
+    cout << "\tRetransmitted packet seqno " << A_queue.front().seqnum << " payload " << string(A_queue.front().payload, 20);
     tolayer3(A, A_queue.front());
     collect_stat(&s, TIMEOUT, &A_queue.front());
     collect_stat(&s, RETRAN_A, &A_queue.front());
     starttimer(A, RXMT_TIMEOUT);
+    print_message(START_TIMER,NULL);
 }
 
 /** the following routine will be called once (only) before any other
@@ -324,7 +363,7 @@ void A_init(void) {}
 /** called from layer 3, when a packet arrives for layer 4 at B*/
 void B_input(pkt packet)
 {
-    cout << "\tB_input\n";
+    cout << "\nB_input at time " << time_now << endl;
     if (get_checksum(&packet, sizeof(pkt)) == 0xFF)
     {
         unsigned offset = wrap_sub(packet.seqnum, next_expected, LIMIT_SEQNO);
@@ -342,6 +381,7 @@ void B_input(pkt packet)
                     {
                         tolayer5(B_window[next_expected_index]
                                      .second); // in-order delivery
+                        cout << "\tPkt delivered, seqno " << packet.seqnum << endl; 
                         collect_stat(&s, DELIVER_B, NULL);
                         B_window[next_expected_index].first =
                             false; // mark as empty
@@ -355,10 +395,13 @@ void B_input(pkt packet)
             make_pkt(packet.payload, 0,
                      next_expected); // whether within window or not, send ack
         tolayer3(B, ack);
+        cout << "\tAck sent to layer3 by B, ackno " << ack.acknum << endl;
         collect_stat(&s, ACK_B, &ack);
     }
-    else
+    else{
         collect_stat(&s, CORRUPT, NULL);
+        print_message(PKT_CORRUPT, &packet);
+    }
 }
 
 /** the following rouytine will be called once (only) before any other
