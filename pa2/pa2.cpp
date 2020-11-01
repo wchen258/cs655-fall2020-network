@@ -323,6 +323,7 @@ void A_input(pkt packet)
                 cout << "\tSend pkt in the queue " << A_queue[first_to_send].seqnum << " payload " << string(A_queue[first_to_send].payload, 20);
                 tolayer3(A, A_queue[first_to_send++]);
             };
+            cout << "\tWindow advanced by " << n_acked << endl;
             if (!A_queue.empty())
                 starttimer(A, RXMT_TIMEOUT);
                 print_message(START_TIMER,NULL);
