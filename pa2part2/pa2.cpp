@@ -242,17 +242,11 @@ deque<pkt> A_queue;                   // A's linear buffer, [0:WINDOW_SIZE] for 
                                       // not ACKed, [WINDOW_SIZE:] for packets wait to be sent
 unsigned first_unacked = FIRST_SEQNO; // sequence number of A_deque[0]
 
-/** variables for B */
-vector<pair<bool, char[20]>>
-    B_window; // B's cicular buffer (length is WINDOW_SIZE), for packets
-              // received but not delivered
-
+/** veriables for B */
 deque<int> B_sack; // initialized to be size five, val=-1, and always keeps size=5
 
 unsigned next_expected =
     FIRST_SEQNO; // sequence number of the next expected packet
-unsigned next_expected_index =
-    0; // index of the next expected packet in B_window
 
 struct stat s;
 
@@ -327,8 +321,12 @@ void A_input(pkt packet)
         cout << "\tChecksum confirmed " << (unsigned int)get_checksum(&packet, sizeof(pkt)) << endl;
         cout << "\tACKno " << packet.acknum << " first_unacked_no " << first_unacked << endl;
         int first_unacked_anchor = first_unacked; // need an anchor to check the valid window for the sender buffer
-
+        stoptimer(A);
         // remove the acked pkt and advance first_unacked
+        cout << "\tACKed history ";
+        for(int i=0; i<5; i++)
+            cout << packet.sack[i] << " ";
+        cout << endl;
         for (int i = 0; i < 5; i++)
         {
             int seqno_delete = packet.sack[i];
@@ -347,18 +345,19 @@ void A_input(pkt packet)
             }
         }
         // send to layer3 for all eligible packet
-        stoptimer(A);
-        if (!A_queue.size())
-            starttimer(A, RXMT_TIMEOUT);
+        
+        int flag=false;
         for (int i = 0; i < A_queue.size(); i++)
         {
             if (inWindow(first_unacked, A_queue[i].seqnum))
             {
                 tolayer3(A, A_queue[i]);
+                flag=true;
             }
             else
                 break;
         }
+        if (flag) starttimer(A, RXMT_TIMEOUT);
     }
     else
     {
@@ -390,8 +389,6 @@ void A_timerinterrupt(void)
  entity A routines are called. You can use it to do any initialization */
 void A_init(void)
 {
-    // cout << "\n\ntest " << wrap_add(10, 10, 20) << endl;
-    // exit(0);
 }
 
 /** called from layer 3, when a packet arrives for layer 4 at B*/
@@ -405,6 +402,7 @@ void B_input(pkt packet)
             tolayer5(packet.payload);
             push_history(packet.seqnum);
             pkt ack_pkt = make_pkt(packet.payload,0,next_expected);
+            tolayer3(B, ack_pkt);
         }
     }
     else
@@ -418,7 +416,6 @@ void B_input(pkt packet)
  entity B routines are called. You can use it to do any initialization */
 void B_init(void)
 {
-    B_window.resize(WINDOW_SIZE); // allocate fixed-size space
     for (int i = 0; i < 5; i++)
         B_sack.push_back(-1);
 }
@@ -570,6 +567,10 @@ int main(int argc, char **argv)
             pkt2give.seqnum = eventptr->pktptr->seqnum;
             pkt2give.acknum = eventptr->pktptr->acknum;
             pkt2give.checksum = eventptr->pktptr->checksum;
+            /** wf need to deliver sack as well **/
+            for (int k=0; k<5; k++)
+                pkt2give.sack[k] = eventptr->pktptr->sack[k];
+            /** done **/
             for (i = 0; i < 20; i++)
                 pkt2give.payload[i] = eventptr->pktptr->payload[i];
             if (eventptr->eventity == A) /* deliver packet by calling */
@@ -813,9 +814,12 @@ void tolayer3(int AorB, pkt packet)
     mypktptr->acknum = packet.acknum;
     mypktptr->checksum = packet.checksum;
     /*wf: add support for sack */
+    cout << "debug=========";
     int j;
-    for (j = 0; j < 5; j++)
+    for (j = 0; j < 5; j++){
+        if (AorB==B) cout << packet.sack[j] << endl;
         mypktptr->sack[j] = packet.sack[j];
+    }
     /*wf: end */
     for (i = 0; i < 20; i++)
         mypktptr->payload[i] = packet.payload[i];
