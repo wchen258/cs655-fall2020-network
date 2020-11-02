@@ -264,9 +264,9 @@ pkt make_pkt(const void *p_msg, int seq, int ack)
     packet.acknum = ack;
     packet.checksum = 0;
     memcpy(packet.payload, p_msg, sizeof(msg));
-    packet.checksum = (byte)~get_checksum(&packet, sizeof(pkt));
     for (int i = 0; i < 5; i++)
-        packet.sack[i] = B_sack[i]; // save acked seqno, NOT ackno which is seqno+1
+    packet.sack[i] = B_sack[i]; // save acked seqno, NOT ackno which is seqno+1
+    packet.checksum = (byte)~get_checksum(&packet, sizeof(pkt));
     return packet;
 }
 
@@ -400,10 +400,10 @@ void B_input(pkt packet)
         if(packet.seqnum==next_expected){
             next_expected = wrap_add(next_expected, 1 , LIMIT_SEQNO);
             tolayer5(packet.payload);
-            push_history(packet.seqnum);
-            pkt ack_pkt = make_pkt(packet.payload,0,next_expected);
-            tolayer3(B, ack_pkt);
-        }
+        } 
+        push_history(packet.seqnum);
+        pkt ack_pkt = make_pkt(packet.payload,0,next_expected);
+        tolayer3(B, ack_pkt);
     }
     else
     {
@@ -573,8 +573,9 @@ int main(int argc, char **argv)
             /** done **/
             for (i = 0; i < 20; i++)
                 pkt2give.payload[i] = eventptr->pktptr->payload[i];
-            if (eventptr->eventity == A) /* deliver packet by calling */
+            if (eventptr->eventity == A){ /* deliver packet by calling */
                 A_input(pkt2give);       /* appropriate entity */
+            }
             else
                 B_input(pkt2give);
             free(eventptr->pktptr); /* free the memory for packet */
@@ -814,10 +815,8 @@ void tolayer3(int AorB, pkt packet)
     mypktptr->acknum = packet.acknum;
     mypktptr->checksum = packet.checksum;
     /*wf: add support for sack */
-    cout << "debug=========";
     int j;
     for (j = 0; j < 5; j++){
-        if (AorB==B) cout << packet.sack[j] << endl;
         mypktptr->sack[j] = packet.sack[j];
     }
     /*wf: end */
