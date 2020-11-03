@@ -256,8 +256,14 @@ unsigned next_expected_index =
     
 struct stat s;
 
-int push_history(int seqno_to_acknowledged) // push in the seqno not ackno
-{
+int push_history(int seqno_to_acknowledged, bool nodup) // push in the seqno not ackno
+{   
+    if(nodup){
+        for(int i=0;i<5;i++) {
+            if(B_sack[i]==seqno_to_acknowledged)
+                return 0;
+        }
+    }
     B_sack.pop_front();
     B_sack.push_back(seqno_to_acknowledged);
     return B_sack.size() == 5 ? 0 : -1;
@@ -403,7 +409,7 @@ void B_input(pkt packet)
     cout << "\nB_input at time " << time_now << endl;
     if (get_checksum(&packet, sizeof(pkt)) == 0xFF)
     {
-        push_history(packet.seqnum);
+        push_history(packet.seqnum, false);
         unsigned offset = wrap_sub(packet.seqnum, next_expected, LIMIT_SEQNO);
         if (offset < WINDOW_SIZE)
         { // within window
