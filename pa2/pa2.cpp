@@ -313,9 +313,10 @@ void A_input(pkt packet)
                 tolayer3(A, A_queue[first_to_send++]);
             };
             cout << "\tWindow advanced by " << n_acked << endl;
-            if (!A_queue.empty())
+            if (!A_queue.empty()) {
                 starttimer(A, RXMT_TIMEOUT);
-                print_message(START_TIMER,NULL);
+                print_message(START_TIMER, NULL);
+            }
         }
         else if (!A_queue.empty())
         { // duplicate ack when there exists
