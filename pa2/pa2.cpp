@@ -91,7 +91,7 @@ struct stat
     vector<double> rtts;
     vector<double> cmts;
     deque<pair<int, double>> traced;
-    deque<pair<int, double>> traced_cmt;
+    deque<double> traced_cmt;
 } s;
 
 enum {
@@ -140,23 +140,11 @@ void collect_stat(stat *s, int evt, pkt *packet)
         break;
     case TRACE_PKT: // for rtt & cmt calc
         s->traced.emplace_back(packet->seqnum, time_now);
-        s->traced_cmt.emplace_back(packet->seqnum, time_now);
+        s->traced_cmt.emplace_back(time_now);
         break;
     case INPUT_A_CMT:
-        if(!s->traced_cmt.size()) break;
-        tracker = 0;
-        for (int i = 0; i < s->traced_cmt.size(); i++)
-        {
-            int seqnum = s->traced_cmt[i].first;
-            double previous_time = s->traced_cmt[i].second;
-            s->cmts.push_back(time_now - previous_time);
-            if (packet->acknum == wrap_add(seqnum, 1, LIMIT_SEQNO))
-            {
-                tracker = i;
-                break;
-            }
-        }
-        s->traced_cmt.erase(s->traced_cmt.begin(), s->traced_cmt.begin() + tracker + 1);
+        s->cmts.push_back(time_now - s->traced_cmt[0]);
+        s->traced_cmt.pop_front();
         break;
     case INPUT_A: // for rtt calc
         if (!s->traced.size())
@@ -291,15 +279,16 @@ void A_input(pkt packet)
                      LIMIT_SEQNO); // the number of newly acked packets, range
                                    // [0, WINDOW_SIZE]
         collect_stat(&s, INPUT_A, &packet);
-        collect_stat(&s, INPUT_A_CMT, &packet);
         if (n_acked)
         {
             stoptimer(A);
             cout << "\tTimer stops at " << time_now << endl;
             first_unacked = packet.acknum;
             cout << "\tNumber of pkt acked " << n_acked << endl;
-            for (int i = 0; i < n_acked; ++i) // remove ACKed packets
+            for (int i = 0; i < n_acked; ++i) { // remove ACKed packets
+                collect_stat(&s, INPUT_A_CMT, &A_queue.front());
                 A_queue.pop_front();
+            }
             unsigned first_to_send = WINDOW_SIZE - n_acked,
                      first_outside_window =
                          min<unsigned>(WINDOW_SIZE, A_queue.size());
