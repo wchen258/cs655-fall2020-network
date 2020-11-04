@@ -83,7 +83,6 @@ typedef unsigned char byte;
 struct stat
 {
     int origin_A = 0; // num of origin pkt trans by A
-    int next_valid_trans_A = FIRST_SEQNO;
     int retrans_A = 0;
     int deliver_B = 0;
     int ack_B = 0;
@@ -92,18 +91,12 @@ struct stat
     vector<double> cmts;
     deque<pair<pkt, double>> traced;
     deque<pair<pkt, double>> traced_cmt;
-};
+} s;
 
-#define ORIGIN_A 0
-#define RETRAN_A 1
-#define DELIVER_B 2
-#define ACK_B 3
-#define CORRUPT 4
-#define TRACE_PKT 5
-#define UNTRACE 6
-#define INPUT_A 7
-#define TIMEOUT 8
-#define INPUT_A_CMT 9
+enum {
+    ORIGIN_A, RETRAN_A, DELIVER_B, ACK_B, CORRUPT,
+    TRACE_PKT, UNTRACE, INPUT_A, TIMEOUT, INPUT_A_CMT
+};
 
 /**  checksum computation */
 byte get_checksum(void *p, int length)
@@ -130,11 +123,7 @@ void collect_stat(stat *s, int evt, pkt *packet)
     switch (evt)
     {
     case ORIGIN_A:
-        if (packet->seqnum == s->next_valid_trans_A)
-        {
-            s->origin_A++;
-            s->next_valid_trans_A = wrap_add(s->next_valid_trans_A, 1, LIMIT_SEQNO);
-        }
+        s->origin_A++;
         break;
     case RETRAN_A:
         s->retrans_A++;
@@ -216,8 +205,9 @@ void collect_stat(stat *s, int evt, pkt *packet)
     }
 }
 
-#define START_TIMER 0
-#define PKT_CORRUPT 1
+enum {
+    START_TIMER, PKT_CORRUPT
+};
 
 void print_message(int situation, pkt * packet) {
     switch (situation)
@@ -247,8 +237,6 @@ unsigned next_expected =
 unsigned next_expected_index =
     0; // index of the next expected packet in B_window
 
-struct stat s;
-
 pkt make_pkt(const void *p_msg, int seq, int ack)
 {
     pkt packet;
@@ -275,7 +263,7 @@ void A_output(msg message)
     A_queue.push_back(outpkt);
     if (queue_size < WINDOW_SIZE)
     { // the new packet is within window
-        cout << "\tFind an empty space in the sneder window. Send to layer3 " << endl;
+        cout << "\tFind an empty space in the sneder window. Send to layer3. " << endl;
         tolayer3(A, outpkt);
         collect_stat(&s, ORIGIN_A, &outpkt);
         collect_stat(&s, TRACE_PKT, &outpkt);
@@ -284,7 +272,7 @@ void A_output(msg message)
             print_message(START_TIMER,NULL);
         }
     } else {
-        cout << "\tSender window has not space. Buffer the packet." << endl;
+        cout << "\tSender window has no space. Buffer the packet." << endl;
     }
     
 }
@@ -417,10 +405,10 @@ void Simulation_done(void)
 {
     /* TO PRINT THE STATISTICS, FILL IN THE DETAILS BY PUTTING VARIBALE NAMES.
      * DO NOT CHANGE THE FORMAT OF PRINTED OUTPUT */
-    float lost_ratio = ((float)s.retrans_A - s.corrupt) /
-                       ((float)s.origin_A + s.retrans_A + s.ack_B);
-    float corr_ratio = ((float)s.corrupt) /
-                       ((float)s.origin_A + s.retrans_A + s.ack_B - s.retrans_A + s.corrupt);
+    float lost_ratio = (float)(s.retrans_A - s.corrupt) /
+                       (s.origin_A + s.retrans_A + s.ack_B);
+    float corr_ratio = (float)s.corrupt /
+                       (s.origin_A + s.retrans_A + s.ack_B - s.retrans_A + s.corrupt);
 
     double rtt;
     for (auto &n : s.rtts)
