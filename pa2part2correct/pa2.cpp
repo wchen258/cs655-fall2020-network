@@ -245,13 +245,25 @@ unsigned first_unacked = FIRST_SEQNO; // sequence number of A_deque[0]
 /** veriables for B */
 deque<int> B_sack; // initialized to be size five, val=-1, and always keeps size=5
 
+vector<pair<bool, char[20]>>
+    B_window; // B's cicular buffer (length is WINDOW_SIZE), for packets
+              // received but not delivered
 unsigned next_expected =
     FIRST_SEQNO; // sequence number of the next expected packet
+unsigned next_expected_index =
+    0; // index of the next expected packet in B_window
 
+    
 struct stat s;
 
-int push_history(int seqno_to_acknowledged) // push in the seqno not ackno
-{
+int push_history(int seqno_to_acknowledged, bool nodup) // push in the seqno not ackno
+{   
+    if(nodup){
+        for(int i=0;i<5;i++) {
+            if(B_sack[i]==seqno_to_acknowledged)
+                return 0;
+        }
+    }
     B_sack.pop_front();
     B_sack.push_back(seqno_to_acknowledged);
     return B_sack.size() == 5 ? 0 : -1;
@@ -397,16 +409,40 @@ void B_input(pkt packet)
     cout << "\nB_input at time " << time_now << endl;
     if (get_checksum(&packet, sizeof(pkt)) == 0xFF)
     {
-        if(packet.seqnum==next_expected){
-            next_expected = wrap_add(next_expected, 1 , LIMIT_SEQNO);
-            tolayer5(packet.payload);
-            push_history(packet.seqnum);
-        } 
-        pkt ack_pkt = make_pkt(packet.payload,0,next_expected);
-        tolayer3(B, ack_pkt);
+        push_history(packet.seqnum, false);
+        unsigned offset = wrap_sub(packet.seqnum, next_expected, LIMIT_SEQNO);
+        if (offset < WINDOW_SIZE)
+        { // within window
+            unsigned index =
+                wrap_add(next_expected_index, offset,
+                         WINDOW_SIZE); // the place to buffer the packet
+            if (!B_window[index].first)
+            {                                 // new packet
+                B_window[index].first = true; // mark as full
+                memcpy(&B_window[index].second, packet.payload, sizeof(msg));
+                if (!offset) // it's the expected packet
+                    do
+                    {
+                        tolayer5(B_window[next_expected_index]
+                                     .second); // in-order delivery
+                        cout << "\tPkt delivered, seqno " << packet.seqnum << endl; 
+                        collect_stat(&s, DELIVER_B, NULL);
+                        B_window[next_expected_index].first =
+                            false; // mark as empty
+                        next_expected_index =
+                            wrap_add(next_expected_index, 1, WINDOW_SIZE);
+                        next_expected = wrap_add(next_expected, 1, LIMIT_SEQNO);
+                    } while (B_window[next_expected_index].first);
+            }
+        }
+        pkt ack =
+            make_pkt(packet.payload, 0,
+                     next_expected); // whether within window or not, send ack
+        tolayer3(B, ack);
+        cout << "\tAck sent to layer3 by B, ackno " << ack.acknum << endl;
+        collect_stat(&s, ACK_B, &ack);
     }
-    else
-    {
+    else{
         collect_stat(&s, CORRUPT, NULL);
         print_message(PKT_CORRUPT, &packet);
     }
@@ -415,7 +451,8 @@ void B_input(pkt packet)
 /** the following rouytine will be called once (only) before any other
  entity B routines are called. You can use it to do any initialization */
 void B_init(void)
-{
+{   
+    B_window.resize(WINDOW_SIZE); 
     for (int i = 0; i < 5; i++)
         B_sack.push_back(-1);
 }
