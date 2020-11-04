@@ -8,9 +8,9 @@
 #include <cstring>
 #include <deque>
 #include <iostream>
-#include <vector>
-#include <string>
 #include <numeric>
+#include <string>
+#include <vector>
 
 using namespace std;
 
@@ -32,16 +32,14 @@ using namespace std;
 /* a "msg" is the data unit passed from layer 5 (teachers code) to layer  */
 /* 4 (students' code).  It contains the data (characters) to be delivered */
 /* to layer 5 via the students transport level protocol entities.         */
-struct msg
-{
+struct msg {
     char data[20];
 };
 
 /* a packet is the data unit passed from layer 4 (students code) to layer */
 /* 3 (teachers code).  Note the pre-defined packet structure, which all   */
 /* students must follow. */
-struct pkt
-{
+struct pkt {
     int seqnum;
     int acknum;
     int checksum;
@@ -70,20 +68,19 @@ void stoptimer(int AorB);
    You have to use these variables in your
    routines --------------------------------------------------------------*/
 
-extern int WINDOW_SIZE; // size of the window
+extern int WINDOW_SIZE;  // size of the window
 extern int
-    LIMIT_SEQNO;            // when sequence number reaches this value, it wraps around
-extern double RXMT_TIMEOUT; // retransmission timeout
-extern int TRACE;           // trace level, for your debug purpose
-extern double time_now;     // simulation time, for your debug purpose
+    LIMIT_SEQNO;  // when sequence number reaches this value, it wraps around
+extern double RXMT_TIMEOUT;  // retransmission timeout
+extern int TRACE;            // trace level, for your debug purpose
+extern double time_now;      // simulation time, for your debug purpose
 
 /********* YOU MAY ADD SOME ROUTINES HERE ********/
 
 typedef unsigned char byte;
 
-struct stat
-{
-    int origin_A = 0; // num of origin pkt trans by A
+struct stat {
+    int origin_A = 0;  // num of origin pkt trans by A
     int retrans_A = 0;
     int deliver_B = 0;
     int ack_B = 0;
@@ -95,112 +92,109 @@ struct stat
 } s;
 
 enum {
-    ORIGIN_A, RETRAN_A, DELIVER_B, ACK_B, CORRUPT,
-    TRACE_PKT, UNTRACE, A_NORMAL, A_ERROR, INPUT_A_RTT, INPUT_A_CMT
+    ORIGIN_A,
+    RETRAN_A,
+    DELIVER_B,
+    ACK_B,
+    CORRUPT,
+    TRACE_PKT,
+    UNTRACE,
+    A_NORMAL,
+    A_ERROR,
+    INPUT_A_RTT,
+    INPUT_A_CMT
 };
 
 /**  checksum computation */
-byte get_checksum(void *p, int length)
-{
-    byte *s = (byte *)p, result = 0;
+byte get_checksum(void* p, int length) {
+    byte *s = (byte*)p, result = 0;
     for (int i = 0; i < length; ++i)
         result += s[i];
     return result;
 }
 
-unsigned wrap_add(unsigned n1, unsigned n2, unsigned period)
-{
+unsigned wrap_add(unsigned n1, unsigned n2, unsigned period) {
     return (n1 + n2) % period;
 }
 
-unsigned wrap_sub(unsigned n1, unsigned n2, unsigned period)
-{
+unsigned wrap_sub(unsigned n1, unsigned n2, unsigned period) {
     return (n1 + period - n2) % period;
 }
 
-void collect_stat(stat *s, int evt, pkt *packet)
-{
-    int tracker;
-    switch (evt)
-    {
+void collect_stat(int evt) {
+    switch (evt) {
     case ORIGIN_A:
-        s->origin_A++;
+        s.origin_A++;
         break;
     case RETRAN_A:
-        s->retrans_A++;
+        s.retrans_A++;
         break;
     case DELIVER_B:
-        s->deliver_B++;
+        s.deliver_B++;
         break;
     case ACK_B:
-        s->ack_B++;
+        s.ack_B++;
         break;
     case CORRUPT:
-        s->corrupt++;
+        s.corrupt++;
         break;
-    case TRACE_PKT: // for rtt & cmt calc
-        s->traced.push_back(time_now);
+    case TRACE_PKT:  // for rtt & cmt calc
+        s.traced.push_back(time_now);
         break;
     case INPUT_A_CMT:
-        s->cmts.push_back(time_now - s->traced[0]);
-        s->traced.pop_front();
+        s.cmts.push_back(time_now - s.traced[0]);
+        s.traced.pop_front();
         break;
     case INPUT_A_RTT:
-        if(!s->A_error){
-            double interval = time_now - s->traced.front();
-            if (interval < RXMT_TIMEOUT)
-            {
-                s->rtts.push_back(interval);
-            } else {
-                cout<<"fuck"<<time_now<<' '<<s->traced.front()<<endl;
-                exit(0);
-            }
+        if (!s.A_error) {
+            double interval = time_now - s.traced.front();
+            s.rtts.push_back(interval);
         }
         break;
-    case A_NORMAL: // for rtt calc
-        s->A_error = false;
+    case A_NORMAL:  // for rtt calc
+        s.A_error = false;
         break;
     case A_ERROR:
-        s->A_error = true;
+        s.A_error = true;
+        break;
     default:
         break;
     }
 }
 
-enum {
-    START_TIMER, PKT_CORRUPT
-};
+enum { START_TIMER, PKT_CORRUPT };
 
-void print_message(int situation, pkt * packet) {
-    switch (situation)
-    {
+void print_message(int situation, pkt* packet) {
+    switch (situation) {
     case START_TIMER:
-        cout << "\tStart timer at " << time_now << " planned inter at " << time_now + RXMT_TIMEOUT << endl;
+        cout << "\tStart timer at " << time_now << " planned inter at "
+             << time_now + RXMT_TIMEOUT << endl;
         break;
     case PKT_CORRUPT:
-        cout << "\tPkt corrupted, " << "packet checksum " << packet->checksum << " actual " << (unsigned int) get_checksum(packet, sizeof(pkt)) << endl;
-    
+        cout << "\tPkt corrupted, "
+             << "packet checksum " << packet->checksum << " actual "
+             << (unsigned int)get_checksum(packet, sizeof(pkt)) << endl;
+
     default:
         break;
     }
 }
 
 /** variables for A */
-deque<pkt> A_queue;                   // A's linear buffer, [0:WINDOW_SIZE] for packets sent but
-                                      // not ACKed, [WINDOW_SIZE:] for packets wait to be sent
-unsigned first_unacked = FIRST_SEQNO; // sequence number of A_deque[0]
+deque<pkt> A_queue;  // A's linear buffer, [0:WINDOW_SIZE] for packets sent but
+                     // not ACKed, [WINDOW_SIZE:] for packets wait to be sent
+unsigned first_unacked = FIRST_SEQNO;  // sequence number of A_deque[0]
 
 /** variables for B */
 vector<pair<bool, char[20]>>
-    B_window; // B's cicular buffer (length is WINDOW_SIZE), for packets
-              // received but not delivered
+    B_window;  // B's cicular buffer (length is WINDOW_SIZE), for packets
+               // received but not delivered
 unsigned next_expected =
-    FIRST_SEQNO; // sequence number of the next expected packet
+    FIRST_SEQNO;  // sequence number of the next expected packet
 unsigned next_expected_index =
-    0; // index of the next expected packet in B_window
+    0;  // index of the next expected packet in B_window
 
-pkt make_pkt(const void *p_msg, int seq, int ack)
-{
+pkt make_pkt(const void* p_msg, int seq, int ack) {
     pkt packet;
     packet.seqnum = seq;
     packet.acknum = ack;
@@ -213,67 +207,67 @@ pkt make_pkt(const void *p_msg, int seq, int ack)
 /********* STUDENTS WRITE THE NEXT SEVEN ROUTINES *********/
 
 /** called from layer 5, passed the data to be sent to other side */
-void A_output(msg message)
-{
+void A_output(msg message) {
     cout << "\nA_output at time " << time_now << endl;
     cout << "\tMessage from A layer 5 " << string(message.data, 20);
     cout << "\tCurrent sender buffer size " << A_queue.size() << endl;
     unsigned queue_size = A_queue.size();
     unsigned seq = wrap_add(first_unacked, queue_size, LIMIT_SEQNO);
     pkt outpkt = make_pkt(&message, seq, 0);
-    cout << "\tSeqno " << outpkt.seqnum << " expected ackno " <<outpkt.seqnum + 1 << " checksum " << outpkt.checksum << endl;
+    cout << "\tSeqno " << outpkt.seqnum << " expected ackno "
+         << outpkt.seqnum + 1 << " checksum " << outpkt.checksum << endl;
     A_queue.push_back(outpkt);
-    if (queue_size < WINDOW_SIZE)
-    { // the new packet is within window
-        cout << "\tFind an empty space in the sender window. Send to layer3. " << endl;
+    if (queue_size < WINDOW_SIZE) {  // the new packet is within window
+        cout << "\tFind an empty space in the sender window. Send to layer3. "
+             << endl;
         tolayer3(A, outpkt);
-        collect_stat(&s, ORIGIN_A, &outpkt);
-        collect_stat(&s, TRACE_PKT, &outpkt);
-        if (!queue_size){ // if it's the first packet in the queue
+        collect_stat(ORIGIN_A);
+        collect_stat(TRACE_PKT);
+        if (!queue_size) {  // if it's the first packet in the queue
             starttimer(A, RXMT_TIMEOUT);
-            print_message(START_TIMER,NULL);
+            print_message(START_TIMER, NULL);
         }
     } else {
         cout << "\tSender window has no space. Buffer the packet." << endl;
     }
-    
 }
 
 /** called from layer 3, when a packet arrives for layer 4 */
-void A_input(pkt packet)
-{
+void A_input(pkt packet) {
     cout << "\nA_input at time " << time_now << endl;
-    if (get_checksum(&packet, sizeof(pkt)) == 0xFF)
-    {
-        cout << "\tChecksum confirmed " << (unsigned int) get_checksum(&packet, sizeof(pkt)) << endl;
-        cout << "\tACKno " << packet.acknum << " first_unacked_no " << first_unacked << endl;
+    if (get_checksum(&packet, sizeof(pkt)) == 0xFF) {
+        cout << "\tChecksum confirmed "
+             << (unsigned int)get_checksum(&packet, sizeof(pkt)) << endl;
+        cout << "\tACKno " << packet.acknum << " first_unacked_no "
+             << first_unacked << endl;
         unsigned n_acked =
             wrap_sub(packet.acknum, first_unacked,
-                     LIMIT_SEQNO); // the number of newly acked packets, range
-                                   // [0, WINDOW_SIZE]
-        if (n_acked)
-        {
+                     LIMIT_SEQNO);  // the number of newly acked packets, range
+                                    // [0, WINDOW_SIZE]
+        if (n_acked) {
             stoptimer(A);
             cout << "\tTimer stops at " << time_now << endl;
             first_unacked = packet.acknum;
             cout << "\tNumber of pkt acked " << n_acked << endl;
-            for (int i = 0; i < n_acked; ++i) { // remove ACKed packets
-                if(i == n_acked - 1)
-                    collect_stat(&s, INPUT_A_RTT, nullptr);
-                collect_stat(&s, INPUT_A_CMT, &A_queue.front());
+            for (int i = 0; i < n_acked; ++i) {  // remove ACKed packets
+                if (i == n_acked - 1)
+                    collect_stat(INPUT_A_RTT);
+                collect_stat(INPUT_A_CMT);
                 A_queue.pop_front();
             }
-            collect_stat(&s, A_NORMAL, &packet);
+            collect_stat(A_NORMAL);
             unsigned first_to_send = WINDOW_SIZE - n_acked,
                      first_outside_window =
                          min<unsigned>(WINDOW_SIZE, A_queue.size());
             while (first_to_send <
-                   first_outside_window) // after sliding window, send newly
-                                         // included packets
+                   first_outside_window)  // after sliding window, send newly
+                                          // included packets
             {
-                collect_stat(&s, ORIGIN_A, &A_queue[first_to_send]);
-                collect_stat(&s, TRACE_PKT, &A_queue[first_to_send]);
-                cout << "\tSend pkt in the queue " << A_queue[first_to_send].seqnum << " payload " << string(A_queue[first_to_send].payload, 20);
+                collect_stat(ORIGIN_A);
+                collect_stat(TRACE_PKT);
+                cout << "\tSend pkt in the queue "
+                     << A_queue[first_to_send].seqnum << " payload "
+                     << string(A_queue[first_to_send].payload, 20);
                 tolayer3(A, A_queue[first_to_send++]);
             };
             cout << "\tWindow advanced by " << n_acked << endl;
@@ -281,35 +275,34 @@ void A_input(pkt packet)
                 starttimer(A, RXMT_TIMEOUT);
                 print_message(START_TIMER, NULL);
             }
-        }
-        else if (!A_queue.empty())
-        { // duplicate ack when there exists
+        } else if (!A_queue.empty()) {  // duplicate ack when there exists
             // unACKed packet
-            cout << "\tDuplicated ACK recieved. Restart timer at " << time_now << " planned inter at " << time_now + RXMT_TIMEOUT << endl;
-            cout << "\tRetransmitted packet seqno " << A_queue.front().seqnum << " payload " << string(A_queue.front().payload, 20);
+            cout << "\tDuplicated ACK recieved. Restart timer at " << time_now
+                 << " planned inter at " << time_now + RXMT_TIMEOUT << endl;
+            cout << "\tRetransmitted packet seqno " << A_queue.front().seqnum
+                 << " payload " << string(A_queue.front().payload, 20);
             stoptimer(A);
             tolayer3(A, A_queue.front());
-            collect_stat(&s, RETRAN_A, &A_queue.front());
-            collect_stat(&s, A_ERROR, nullptr);
+            collect_stat(RETRAN_A);
+            collect_stat(A_ERROR);
             starttimer(A, RXMT_TIMEOUT);
         }
-    }
-    else{
-        collect_stat(&s, CORRUPT, NULL);
+    } else {
+        collect_stat(CORRUPT);
         print_message(PKT_CORRUPT, &packet);
     }
 }
 
 /** called when A's timer goes off */
-void A_timerinterrupt(void)
-{
+void A_timerinterrupt(void) {
     cout << "\nA_inter at time " << time_now << endl;
-    cout << "\tRetransmitted packet seqno " << A_queue.front().seqnum << " payload " << string(A_queue.front().payload, 20);
+    cout << "\tRetransmitted packet seqno " << A_queue.front().seqnum
+         << " payload " << string(A_queue.front().payload, 20);
     tolayer3(A, A_queue.front());
-    collect_stat(&s, A_ERROR, nullptr);
-    collect_stat(&s, RETRAN_A, &A_queue.front());
+    collect_stat(A_ERROR);
+    collect_stat(RETRAN_A);
     starttimer(A, RXMT_TIMEOUT);
-    print_message(START_TIMER,NULL);
+    print_message(START_TIMER, NULL);
 }
 
 /** the following routine will be called once (only) before any other
@@ -317,30 +310,26 @@ void A_timerinterrupt(void)
 void A_init(void) {}
 
 /** called from layer 3, when a packet arrives for layer 4 at B*/
-void B_input(pkt packet)
-{
+void B_input(pkt packet) {
     cout << "\nB_input at time " << time_now << endl;
-    if (get_checksum(&packet, sizeof(pkt)) == 0xFF)
-    {
+    if (get_checksum(&packet, sizeof(pkt)) == 0xFF) {
         unsigned offset = wrap_sub(packet.seqnum, next_expected, LIMIT_SEQNO);
-        if (offset < WINDOW_SIZE)
-        { // within window
+        if (offset < WINDOW_SIZE) {  // within window
             unsigned index =
                 wrap_add(next_expected_index, offset,
-                         WINDOW_SIZE); // the place to buffer the packet
-            if (!B_window[index].first)
-            {                                 // new packet
-                B_window[index].first = true; // mark as full
+                         WINDOW_SIZE);         // the place to buffer the packet
+            if (!B_window[index].first) {      // new packet
+                B_window[index].first = true;  // mark as full
                 memcpy(&B_window[index].second, packet.payload, sizeof(msg));
-                if (!offset) // it's the expected packet
-                    do
-                    {
+                if (!offset)  // it's the expected packet
+                    do {
                         tolayer5(B_window[next_expected_index]
-                                     .second); // in-order delivery
-                        cout << "\tPkt delivered, seqno " << packet.seqnum << endl; 
-                        collect_stat(&s, DELIVER_B, NULL);
+                                     .second);  // in-order delivery
+                        cout << "\tPkt delivered, seqno " << packet.seqnum
+                             << endl;
+                        collect_stat(DELIVER_B);
                         B_window[next_expected_index].first =
-                            false; // mark as empty
+                            false;  // mark as empty
                         next_expected_index =
                             wrap_add(next_expected_index, 1, WINDOW_SIZE);
                         next_expected = wrap_add(next_expected, 1, LIMIT_SEQNO);
@@ -349,42 +338,41 @@ void B_input(pkt packet)
         }
         pkt ack =
             make_pkt(packet.payload, 0,
-                     next_expected); // whether within window or not, send ack
+                     next_expected);  // whether within window or not, send ack
         tolayer3(B, ack);
         cout << "\tAck sent to layer3 by B, ackno " << ack.acknum << endl;
-        collect_stat(&s, ACK_B, &ack);
-    }
-    else{
-        collect_stat(&s, CORRUPT, NULL);
+        collect_stat(ACK_B);
+    } else {
+        collect_stat(CORRUPT);
         print_message(PKT_CORRUPT, &packet);
     }
 }
 
 /** the following rouytine will be called once (only) before any other
  entity B routines are called. You can use it to do any initialization */
-void B_init(void)
-{
-    B_window.resize(WINDOW_SIZE); // allocate fixed-size space
+void B_init(void) {
+    B_window.resize(WINDOW_SIZE);  // allocate fixed-size space
 }
 
 /** called at end of simulation to print final statistics */
-void Simulation_done(void)
-{
+void Simulation_done(void) {
     /* TO PRINT THE STATISTICS, FILL IN THE DETAILS BY PUTTING VARIBALE NAMES.
      * DO NOT CHANGE THE FORMAT OF PRINTED OUTPUT */
-    float lost_ratio = (float)(s.retrans_A - s.corrupt) /
-                       (s.origin_A + s.retrans_A + s.ack_B);
-    float corr_ratio = (float)s.corrupt /
-                       (s.origin_A + s.retrans_A + s.ack_B - s.retrans_A + s.corrupt);
+    float lost_ratio =
+        (float)(s.retrans_A - s.corrupt) / (s.origin_A + s.retrans_A + s.ack_B);
+    float corr_ratio = (float)s.corrupt / (s.origin_A + s.retrans_A + s.ack_B -
+                                           s.retrans_A + s.corrupt);
 
     auto rtt = accumulate(s.rtts.begin(), s.rtts.end(), 0.0) / s.rtts.size();
-    auto cmt_time = accumulate(s.cmts.begin(), s.cmts.end(), 0.0) / s.cmts.size();
-cout<<s.rtts.size()<<endl;
-    cout << "\n\n===============STATISTICS======================= \n"
+    auto cmt_time =
+        accumulate(s.cmts.begin(), s.cmts.end(), 0.0) / s.cmts.size();
+    cout << s.rtts.size() << endl;
+    cout << "\n\n===============STATISTICS======================= \n" << endl;
+    cout << "Number of original packets transmitted by A: " << s.origin_A
          << endl;
-    cout << "Number of original packets transmitted by A: " << s.origin_A << endl;
     cout << "Number of retransmissions by A: " << s.retrans_A << endl;
-    cout << "Number of data packets delivered to layer 5 at B: " << s.deliver_B << endl;
+    cout << "Number of data packets delivered to layer 5 at B: " << s.deliver_B
+         << endl;
     cout << "Number of ACK packets sent by B: " << s.ack_B << endl;
     cout << "Number of corrupted packets: " << s.corrupt << endl;
     cout << "Ratio of lost packets: " << lost_ratio << endl;
@@ -416,21 +404,20 @@ the emulator, you're welcome to look at the code - but again, you should have
 to, and you defeinitely should not have to modify
 ******************************************************************/
 
-struct event
-{
+struct event {
     double evtime; /* event time */
     int evtype;    /* event type code */
     int eventity;  /* entity where event occurs */
-    pkt *pktptr;   /* ptr to packet (if any) assoc w/ this event */
-    struct event *prev;
-    struct event *next;
+    pkt* pktptr;   /* ptr to packet (if any) assoc w/ this event */
+    struct event* prev;
+    struct event* next;
 };
-struct event *evlist = NULL; /* the event list */
+struct event* evlist = NULL; /* the event list */
 
 /* Advance declarations. */
 void init(void);
 void generate_next_arrival(void);
-void insertevent(struct event *p);
+void insertevent(struct event* p);
 
 /* possible events: */
 #define TIMER_INTERRUPT 0
@@ -441,7 +428,7 @@ void insertevent(struct event *p);
 #define ON 1
 
 int TRACE = 0; /* for debugging purpose */
-FILE *fileoutput;
+FILE* fileoutput;
 double time_now = 0.000;
 int WINDOW_SIZE;
 int LIMIT_SEQNO;
@@ -456,9 +443,8 @@ int nsim = 0;
 int nsimmax = 0;
 unsigned int seed[5]; /* seed used in the pseudo-random generator */
 
-int main(int argc, char **argv)
-{
-    struct event *eventptr;
+int main(int argc, char** argv) {
+    struct event* eventptr;
     msg msg2give;
     pkt pkt2give;
 
@@ -468,16 +454,14 @@ int main(int argc, char **argv)
     A_init();
     B_init();
 
-    while (1)
-    {
+    while (1) {
         eventptr = evlist; /* get next event to simulate */
         if (eventptr == NULL)
             goto terminate;
         evlist = evlist->next; /* remove this event from event list */
         if (evlist != NULL)
             evlist->prev = NULL;
-        if (TRACE >= 2)
-        {
+        if (TRACE >= 2) {
             printf("\nEVENT time: %f,", eventptr->evtime);
             printf("  type: %d", eventptr->evtype);
             if (eventptr->evtype == 0)
@@ -489,8 +473,7 @@ int main(int argc, char **argv)
             printf(" entity: %d\n", eventptr->eventity);
         }
         time_now = eventptr->evtime; /* update time to next event time */
-        if (eventptr->evtype == FROM_LAYER5)
-        {
+        if (eventptr->evtype == FROM_LAYER5) {
             generate_next_arrival(); /* set up future arrival */
             /* fill in msg to give with string of same letter */
             j = nsim % 26;
@@ -501,9 +484,7 @@ int main(int argc, char **argv)
             if (nsim == nsimmax + 1)
                 break;
             A_output(msg2give);
-        }
-        else if (eventptr->evtype == FROM_LAYER3)
-        {
+        } else if (eventptr->evtype == FROM_LAYER3) {
             pkt2give.seqnum = eventptr->pktptr->seqnum;
             pkt2give.acknum = eventptr->pktptr->acknum;
             pkt2give.checksum = eventptr->pktptr->checksum;
@@ -514,13 +495,9 @@ int main(int argc, char **argv)
             else
                 B_input(pkt2give);
             free(eventptr->pktptr); /* free the memory for packet */
-        }
-        else if (eventptr->evtype == TIMER_INTERRUPT)
-        {
+        } else if (eventptr->evtype == TIMER_INTERRUPT) {
             A_timerinterrupt();
-        }
-        else
-        {
+        } else {
             printf("INTERNAL PANIC: unknown event type \n");
         }
         free(eventptr);
@@ -546,7 +523,7 @@ void init(void) /* initialize the simulator */
     scanf("%lf", &lambda);
     printf("Enter window size [>0]:");
     scanf("%d", &WINDOW_SIZE);
-    LIMIT_SEQNO = WINDOW_SIZE * 2; // set appropriately; here assumes SR
+    LIMIT_SEQNO = WINDOW_SIZE * 2;  // set appropriately; here assumes SR
     printf("Enter retransmission timeout [> 0.0]:");
     scanf("%lf", &RXMT_TIMEOUT);
     printf("Enter trace level:");
@@ -571,14 +548,12 @@ void init(void) /* initialize the simulator */
 /* system-supplied rand() function return an int in therange [0,mmm]        */
 /*     modified by Chong Wang on Oct.21,2005                                */
 /****************************************************************************/
-int nextrand(int i)
-{
+int nextrand(int i) {
     seed[i] = seed[i] * 1103515245 + 12345;
     return (unsigned int)(seed[i] / 65536) % 32768;
 }
 
-double mrand(int i)
-{
+double mrand(int i) {
     double mmm = 32767;    /* largest int  - MACHINE DEPENDENT!!!!!!!!   */
     double x;              /* individual students may need to change mmm */
     x = nextrand(i) / mmm; /* x should be uniform in [0,1] */
@@ -590,58 +565,47 @@ double mrand(int i)
 /********************* EVENT HANDLINE ROUTINES *******/
 /*  The next set of routines handle the event list   */
 /*****************************************************/
-void generate_next_arrival(void)
-{
+void generate_next_arrival(void) {
     double x;
-    struct event *evptr;
+    struct event* evptr;
 
     if (TRACE > 2)
         printf("          GENERATE NEXT ARRIVAL: creating new arrival\n");
 
     x = lambda * mrand(0) * 2; /* x is uniform on [0,2*lambda] */
                                /* having mean of lambda        */
-    evptr = (struct event *)malloc(sizeof(struct event));
+    evptr = (struct event*)malloc(sizeof(struct event));
     evptr->evtime = time_now + x;
     evptr->evtype = FROM_LAYER5;
     evptr->eventity = A;
     insertevent(evptr);
 }
 
-void insertevent(struct event *p)
-{
+void insertevent(struct event* p) {
     struct event *q, *qold;
 
-    if (TRACE > 2)
-    {
+    if (TRACE > 2) {
         printf("            INSERTEVENT: time is %f\n", time_now);
         printf("            INSERTEVENT: future time will be %f\n", p->evtime);
     }
-    q = evlist; /* q points to header of list in which p struct inserted */
-    if (q == NULL)
-    { /* list is empty */
+    q = evlist;      /* q points to header of list in which p struct inserted */
+    if (q == NULL) { /* list is empty */
         evlist = p;
         p->next = NULL;
         p->prev = NULL;
-    }
-    else
-    {
+    } else {
         for (qold = q; q != NULL && p->evtime > q->evtime; q = q->next)
             qold = q;
-        if (q == NULL)
-        { /* end of list */
+        if (q == NULL) { /* end of list */
             qold->next = p;
             p->prev = qold;
             p->next = NULL;
-        }
-        else if (q == evlist)
-        { /* front of list */
+        } else if (q == evlist) { /* front of list */
             p->next = evlist;
             p->prev = NULL;
             p->next->prev = p;
             evlist = p;
-        }
-        else
-        { /* middle of list */
+        } else { /* middle of list */
             p->next = q;
             p->prev = q->prev;
             q->prev->next = p;
@@ -650,12 +614,10 @@ void insertevent(struct event *p)
     }
 }
 
-void printevlist(void)
-{
-    struct event *q;
+void printevlist(void) {
+    struct event* q;
     printf("--------------\nEvent List Follows:\n");
-    for (q = evlist; q != NULL; q = q->next)
-    {
+    for (q = evlist; q != NULL; q = q->next) {
         printf("Event time: %f, type: %d entity: %d\n", q->evtime, q->evtype,
                q->eventity);
     }
@@ -668,26 +630,22 @@ void printevlist(void)
 void stoptimer(int AorB)
 /* A or B is trying to stop timer */
 {
-    struct event *q /* ,*qold */;
+    struct event* q /* ,*qold */;
     if (TRACE > 2)
         printf("          STOP TIMER: stopping timer at %f\n", time_now);
     /* for (q=evlist; q!=NULL && q->next!=NULL; q = q->next)  */
     for (q = evlist; q != NULL; q = q->next)
-        if ((q->evtype == TIMER_INTERRUPT && q->eventity == AorB))
-        {
+        if ((q->evtype == TIMER_INTERRUPT && q->eventity == AorB)) {
             /* remove this event */
             if (q->next == NULL && q->prev == NULL)
                 evlist = NULL;        /* remove first and only event on list */
             else if (q->next == NULL) /* end of list - there is one in front */
                 q->prev->next = NULL;
             else if (q ==
-                     evlist)
-            { /* front of list - there must be event after */
+                     evlist) { /* front of list - there must be event after */
                 q->next->prev = NULL;
                 evlist = q->next;
-            }
-            else
-            { /* middle of list */
+            } else { /* middle of list */
                 q->next->prev = q->prev;
                 q->prev->next = q->next;
             }
@@ -700,23 +658,22 @@ void stoptimer(int AorB)
 void starttimer(int AorB, double increment)
 /* A or B is trying to stop timer */
 {
-    struct event *q;
-    struct event *evptr;
+    struct event* q;
+    struct event* evptr;
 
     if (TRACE > 2)
         printf("          START TIMER: starting timer at %f\n", time_now);
     /* be nice: check to see if timer is already started, if so, then  warn */
     /* for (q=evlist; q!=NULL && q->next!=NULL; q = q->next)  */
     for (q = evlist; q != NULL; q = q->next)
-        if ((q->evtype == TIMER_INTERRUPT && q->eventity == AorB))
-        {
+        if ((q->evtype == TIMER_INTERRUPT && q->eventity == AorB)) {
             printf(
                 "Warning: attempt to start a timer that is already started\n");
             return;
         }
 
     /* create future event for when timer goes off */
-    evptr = (struct event *)malloc(sizeof(struct event));
+    evptr = (struct event*)malloc(sizeof(struct event));
     evptr->evtime = time_now + increment;
     evptr->evtype = TIMER_INTERRUPT;
     evptr->eventity = AorB;
@@ -727,7 +684,7 @@ void starttimer(int AorB, double increment)
 void tolayer3(int AorB, pkt packet)
 /* A or B is trying to stop timer */
 {
-    pkt *mypktptr;
+    pkt* mypktptr;
     struct event *evptr, *q;
     double lastime, x;
     int i;
@@ -735,8 +692,7 @@ void tolayer3(int AorB, pkt packet)
     ntolayer3++;
 
     /* simulate losses: */
-    if (mrand(1) < lossprob)
-    {
+    if (mrand(1) < lossprob) {
         nlost++;
         if (TRACE > 0)
             printf("          TOLAYER3: packet being lost\n");
@@ -745,20 +701,19 @@ void tolayer3(int AorB, pkt packet)
 
     /* make a copy of the packet student just gave me since he/she may decide */
     /* to do something with the packet after we return back to him/her */
-    mypktptr = (pkt *)malloc(sizeof(pkt));
+    mypktptr = (pkt*)malloc(sizeof(pkt));
     mypktptr->seqnum = packet.seqnum;
     mypktptr->acknum = packet.acknum;
     mypktptr->checksum = packet.checksum;
     for (i = 0; i < 20; i++)
         mypktptr->payload[i] = packet.payload[i];
-    if (TRACE > 2)
-    {
+    if (TRACE > 2) {
         printf("          TOLAYER3: seq: %d, ack %d, check: %d ",
                mypktptr->seqnum, mypktptr->acknum, mypktptr->checksum);
     }
 
     /* create future event for arrival of packet at the other side */
-    evptr = (struct event *)malloc(sizeof(struct event));
+    evptr = (struct event*)malloc(sizeof(struct event));
     evptr->evtype = FROM_LAYER3;      /* packet will pop out from layer3 */
     evptr->eventity = (AorB + 1) % 2; /* event occurs at other entity */
     evptr->pktptr = mypktptr;         /* save ptr to my copy of packet */
@@ -775,8 +730,7 @@ void tolayer3(int AorB, pkt packet)
 
     /* simulate corruption: */
     /* modified by Chong Wang on Oct.21, 2005  */
-    if (mrand(3) < corruptprob)
-    {
+    if (mrand(3) < corruptprob) {
         ncorrupt++;
         if ((x = mrand(4)) < 0.75)
             mypktptr->payload[0] = '?'; /* corrupt payload */
@@ -793,7 +747,6 @@ void tolayer3(int AorB, pkt packet)
     insertevent(evptr);
 }
 
-void tolayer5(char datasent[])
-{
+void tolayer5(char datasent[]) {
     fwrite(datasent, 1, 20, fileoutput);
 }
