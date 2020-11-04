@@ -90,8 +90,8 @@ struct stat
     int corrupt = 0;
     vector<double> rtts;
     vector<double> cmts;
-    deque<pair<pkt, double>> traced;
-    deque<pair<pkt, double>> traced_cmt;
+    deque<pair<int, double>> traced;
+    deque<pair<int, double>> traced_cmt;
 } s;
 
 enum {
@@ -139,18 +139,18 @@ void collect_stat(stat *s, int evt, pkt *packet)
         s->corrupt++;
         break;
     case TRACE_PKT: // for rtt & cmt calc
-        s->traced.emplace_back(*packet, time_now);
-        s->traced_cmt.emplace_back(*packet, time_now);
+        s->traced.emplace_back(packet->seqnum, time_now);
+        s->traced_cmt.emplace_back(packet->seqnum, time_now);
         break;
     case INPUT_A_CMT:
         if(!s->traced_cmt.size()) break;
         tracker = 0;
-        for (int i = 0; i < (s->traced_cmt).size(); i++)
+        for (int i = 0; i < s->traced_cmt.size(); i++)
         {
-            struct pkt p = s->traced_cmt[i].first;
+            int seqnum = s->traced_cmt[i].first;
             double previous_time = s->traced_cmt[i].second;
             s->cmts.push_back(time_now - previous_time);
-            if (packet->acknum - 1 == p.seqnum)
+            if (packet->acknum == wrap_add(seqnum, 1, LIMIT_SEQNO))
             {
                 tracker = i;
                 break;
@@ -161,7 +161,7 @@ void collect_stat(stat *s, int evt, pkt *packet)
     case INPUT_A: // for rtt calc
         if (!s->traced.size())
             break;
-        if (packet->acknum - 1 == s->traced.front().first.seqnum)
+        if (packet->acknum == wrap_add(s->traced.front().first, 1, LIMIT_SEQNO))
         {
             double interval = time_now - s->traced.front().second;
             if (interval < RXMT_TIMEOUT)
@@ -175,8 +175,8 @@ void collect_stat(stat *s, int evt, pkt *packet)
             tracker = 0;
             for (int i = 0; i < (s->traced).size(); i++)
             {
-                struct pkt p = s->traced[i].first;
-                if (packet->acknum - 1 == p.seqnum)
+                int seqnum = s->traced[i].first;
+                if (packet->acknum - 1 == seqnum)
                 {
                     tracker = i;
                     break;
@@ -191,8 +191,8 @@ void collect_stat(stat *s, int evt, pkt *packet)
         tracker = 0;
         for (int i = 0; i < (s->traced).size(); i++)
         {
-            struct pkt p = s->traced[i].first;
-            if (packet->seqnum == p.seqnum)
+            int seqnum = s->traced[i].first;
+            if (packet->seqnum == seqnum)
             {
                 tracker = i;
                 break;
