@@ -10,6 +10,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <numeric>
 
 using namespace std;
 
@@ -138,8 +139,8 @@ void collect_stat(stat *s, int evt, pkt *packet)
         s->corrupt++;
         break;
     case TRACE_PKT: // for rtt & cmt calc
-        s->traced.push_back(make_pair(*packet, time_now));
-        s->traced_cmt.push_back(make_pair(*packet, time_now));
+        s->traced.emplace_back(*packet, time_now);
+        s->traced_cmt.emplace_back(*packet, time_now);
         break;
     case INPUT_A_CMT:
         if(!s->traced_cmt.size()) break;
@@ -410,15 +411,8 @@ void Simulation_done(void)
     float corr_ratio = (float)s.corrupt /
                        (s.origin_A + s.retrans_A + s.ack_B - s.retrans_A + s.corrupt);
 
-    double rtt;
-    for (auto &n : s.rtts)
-        rtt += n;
-    rtt /= s.rtts.size();
-
-    double cmt_time;
-    for (auto &n: s.cmts)
-        cmt_time += n;
-    cmt_time /= s.cmts.size();
+    auto rtt = accumulate(s.rtts.begin(), s.rtts.end(), 0.0) / s.rtts.size();
+    auto cmt_time = accumulate(s.cmts.begin(), s.cmts.end(), 0.0) / s.cmts.size();
 
     cout << "\n\n===============STATISTICS======================= \n"
          << endl;
