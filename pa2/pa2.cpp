@@ -90,13 +90,13 @@ struct stat
     int corrupt = 0;
     vector<double> rtts;
     vector<double> cmts;
-    deque<pair<int, double>> traced;
-    deque<double> traced_cmt;
+    deque<double> traced;
+    bool A_error = false;
 } s;
 
 enum {
     ORIGIN_A, RETRAN_A, DELIVER_B, ACK_B, CORRUPT,
-    TRACE_PKT, UNTRACE, INPUT_A, TIMEOUT, INPUT_A_CMT
+    TRACE_PKT, UNTRACE, A_NORMAL, A_ERROR, INPUT_A_RTT, INPUT_A_CMT
 };
 
 /**  checksum computation */
@@ -139,56 +139,29 @@ void collect_stat(stat *s, int evt, pkt *packet)
         s->corrupt++;
         break;
     case TRACE_PKT: // for rtt & cmt calc
-        s->traced.emplace_back(packet->seqnum, time_now);
-        s->traced_cmt.emplace_back(time_now);
+        s->traced.push_back(time_now);
         break;
     case INPUT_A_CMT:
-        s->cmts.push_back(time_now - s->traced_cmt[0]);
-        s->traced_cmt.pop_front();
+        s->cmts.push_back(time_now - s->traced[0]);
+        s->traced.pop_front();
         break;
-    case INPUT_A: // for rtt calc
-        if (!s->traced.size())
-            break;
-        if (packet->acknum == wrap_add(s->traced.front().first, 1, LIMIT_SEQNO))
-        {
-            double interval = time_now - s->traced.front().second;
+    case INPUT_A_RTT:
+        if(!s->A_error){
+            double interval = time_now - s->traced.front();
             if (interval < RXMT_TIMEOUT)
             {
-                s->rtts.push_back(time_now - s->traced.front().second);
+                s->rtts.push_back(interval);
+            } else {
+                cout<<"fuck"<<time_now<<' '<<s->traced.front()<<endl;
+                exit(0);
             }
-            s->traced.pop_front();
-        }
-        else
-        {
-            tracker = 0;
-            for (int i = 0; i < (s->traced).size(); i++)
-            {
-                int seqnum = s->traced[i].first;
-                if (packet->acknum - 1 == seqnum)
-                {
-                    tracker = i;
-                    break;
-                }
-            }
-            s->traced.erase(s->traced.begin(), s->traced.begin() + tracker + 1);
         }
         break;
-    case TIMEOUT:
-        if (!s->traced.size())
-            break;
-        tracker = 0;
-        for (int i = 0; i < (s->traced).size(); i++)
-        {
-            int seqnum = s->traced[i].first;
-            if (packet->seqnum == seqnum)
-            {
-                tracker = i;
-                break;
-            }
-        }
-        s->traced.erase(s->traced.begin(), s->traced.begin() + tracker + 1);
+    case A_NORMAL: // for rtt calc
+        s->A_error = false;
         break;
-
+    case A_ERROR:
+        s->A_error = true;
     default:
         break;
     }
@@ -252,7 +225,7 @@ void A_output(msg message)
     A_queue.push_back(outpkt);
     if (queue_size < WINDOW_SIZE)
     { // the new packet is within window
-        cout << "\tFind an empty space in the sneder window. Send to layer3. " << endl;
+        cout << "\tFind an empty space in the sender window. Send to layer3. " << endl;
         tolayer3(A, outpkt);
         collect_stat(&s, ORIGIN_A, &outpkt);
         collect_stat(&s, TRACE_PKT, &outpkt);
@@ -278,7 +251,6 @@ void A_input(pkt packet)
             wrap_sub(packet.acknum, first_unacked,
                      LIMIT_SEQNO); // the number of newly acked packets, range
                                    // [0, WINDOW_SIZE]
-        collect_stat(&s, INPUT_A, &packet);
         if (n_acked)
         {
             stoptimer(A);
@@ -286,9 +258,12 @@ void A_input(pkt packet)
             first_unacked = packet.acknum;
             cout << "\tNumber of pkt acked " << n_acked << endl;
             for (int i = 0; i < n_acked; ++i) { // remove ACKed packets
+                if(i == n_acked - 1)
+                    collect_stat(&s, INPUT_A_RTT, nullptr);
                 collect_stat(&s, INPUT_A_CMT, &A_queue.front());
                 A_queue.pop_front();
             }
+            collect_stat(&s, A_NORMAL, &packet);
             unsigned first_to_send = WINDOW_SIZE - n_acked,
                      first_outside_window =
                          min<unsigned>(WINDOW_SIZE, A_queue.size());
@@ -315,6 +290,7 @@ void A_input(pkt packet)
             stoptimer(A);
             tolayer3(A, A_queue.front());
             collect_stat(&s, RETRAN_A, &A_queue.front());
+            collect_stat(&s, A_ERROR, nullptr);
             starttimer(A, RXMT_TIMEOUT);
         }
     }
@@ -330,7 +306,7 @@ void A_timerinterrupt(void)
     cout << "\nA_inter at time " << time_now << endl;
     cout << "\tRetransmitted packet seqno " << A_queue.front().seqnum << " payload " << string(A_queue.front().payload, 20);
     tolayer3(A, A_queue.front());
-    collect_stat(&s, TIMEOUT, &A_queue.front());
+    collect_stat(&s, A_ERROR, nullptr);
     collect_stat(&s, RETRAN_A, &A_queue.front());
     starttimer(A, RXMT_TIMEOUT);
     print_message(START_TIMER,NULL);
@@ -403,7 +379,7 @@ void Simulation_done(void)
 
     auto rtt = accumulate(s.rtts.begin(), s.rtts.end(), 0.0) / s.rtts.size();
     auto cmt_time = accumulate(s.cmts.begin(), s.cmts.end(), 0.0) / s.cmts.size();
-
+cout<<s.rtts.size()<<endl;
     cout << "\n\n===============STATISTICS======================= \n"
          << endl;
     cout << "Number of original packets transmitted by A: " << s.origin_A << endl;
