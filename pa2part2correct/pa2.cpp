@@ -95,16 +95,10 @@ struct stat
     deque<pair<pkt, double>> traced_cmt;
 };
 
-#define ORIGIN_A 0
-#define RETRAN_A 1
-#define DELIVER_B 2
-#define ACK_B 3
-#define CORRUPT 4
-#define TRACE_PKT 5
-#define UNTRACE 6
-#define INPUT_A 7
-#define TIMEOUT 8
-#define INPUT_A_CMT 9
+enum {
+    ORIGIN_A, RETRAN_A, DELIVER_B, ACK_B, CORRUPT,
+    TRACE_PKT, UNTRACE, INPUT_A, TIMEOUT, INPUT_A_CMT
+};
 
 /**  checksum computation */
 byte get_checksum(void *p, int length)
@@ -125,98 +119,7 @@ unsigned wrap_sub(unsigned n1, unsigned n2, unsigned period)
     return (n1 + period - n2) % period;
 }
 
-void collect_stat(stat *s, int evt, pkt *packet)
-{
-    int tracker;
-    switch (evt)
-    {
-    case ORIGIN_A:
-        if (packet->seqnum == s->next_valid_trans_A)
-        {
-            s->origin_A++;
-            s->next_valid_trans_A = wrap_add(s->next_valid_trans_A, 1, LIMIT_SEQNO);
-        }
-        break;
-    case RETRAN_A:
-        s->retrans_A++;
-        break;
-    case DELIVER_B:
-        s->deliver_B++;
-        break;
-    case ACK_B:
-        s->ack_B++;
-        break;
-    case CORRUPT:
-        s->corrupt++;
-        break;
-    case TRACE_PKT: // for rtt & cmt calc
-        s->traced.push_back(make_pair(*packet, time_now));
-        s->traced_cmt.push_back(make_pair(*packet, time_now));
-        break;
-    case INPUT_A_CMT:
-        if (!s->traced_cmt.size())
-            break;
-        tracker = 0;
-        for (int i = 0; i < (s->traced_cmt).size(); i++)
-        {
-            struct pkt p = s->traced_cmt[i].first;
-            double previous_time = s->traced_cmt[i].second;
-            s->cmts.push_back(time_now - previous_time);
-            if (packet->acknum - 1 == p.seqnum)
-            {
-                tracker = i;
-                break;
-            }
-        }
-        s->traced_cmt.erase(s->traced_cmt.begin(), s->traced_cmt.begin() + tracker + 1);
-        break;
-    case INPUT_A: // for rtt calc
-        if (!s->traced.size())
-            break;
-        if (packet->acknum - 1 == s->traced.front().first.seqnum)
-        {
-            double interval = time_now - s->traced.front().second;
-            if (interval < RXMT_TIMEOUT)
-            {
-                s->rtts.push_back(time_now - s->traced.front().second);
-            }
-            s->traced.pop_front();
-        }
-        else
-        {
-            tracker = 0;
-            for (int i = 0; i < (s->traced).size(); i++)
-            {
-                struct pkt p = s->traced[i].first;
-                if (packet->acknum - 1 == p.seqnum)
-                {
-                    tracker = i;
-                    break;
-                }
-            }
-            s->traced.erase(s->traced.begin(), s->traced.begin() + tracker + 1);
-        }
-        break;
-    case TIMEOUT:
-        if (!s->traced.size())
-            break;
-        tracker = 0;
-        for (int i = 0; i < (s->traced).size(); i++)
-        {
-            struct pkt p = s->traced[i].first;
-            if (packet->seqnum == p.seqnum)
-            {
-                tracker = i;
-                break;
-            }
-        }
-        s->traced.erase(s->traced.begin(), s->traced.begin() + tracker + 1);
-        break;
 
-    default:
-        break;
-    }
-}
 
 #define START_TIMER 0
 #define PKT_CORRUPT 1
@@ -255,6 +158,117 @@ unsigned next_expected_index =
 
     
 struct stat s;
+
+
+bool inWindow(int first_unacked, int seqno)
+{
+    int max_seqno = wrap_add(first_unacked, WINDOW_SIZE, LIMIT_SEQNO);
+    if (max_seqno < first_unacked)
+    {
+        return (seqno >= max_seqno && seqno < first_unacked) ? false : true;
+    }
+    else
+        return (seqno >= max_seqno || seqno < first_unacked) ? false : true;
+}
+
+
+
+void collect_stat(stat *s, int evt, pkt *packet)
+{
+    int tracker;
+    switch (evt)
+    {
+    case ORIGIN_A:
+        s->origin_A++;
+        break;
+    case RETRAN_A:
+        s->retrans_A++;
+        break;
+    case DELIVER_B:
+        s->deliver_B++;
+        break;
+    case ACK_B:
+        s->ack_B++;
+        break;
+    case CORRUPT:
+        s->corrupt++;
+        break;
+    case TRACE_PKT: // for rtt & cmt calc
+        s->traced.push_back(make_pair(*packet, time_now));
+        s->traced_cmt.push_back(make_pair(*packet, time_now));
+        break;
+    case INPUT_A_CMT:
+        tracker = 0;
+        for(int k=0;k<5;k++){
+            if (!s->traced_cmt.size())
+            break;
+            int packno = packet->sack[k];
+            if(!inWindow(first_unacked, packno)) continue;
+            for (int i = 0; i < (s->traced_cmt).size(); i++)
+            {
+                struct pkt p = s->traced_cmt[i].first;
+                double previous_time = s->traced_cmt[i].second;
+                s->cmts.push_back(time_now - previous_time);
+                if (packno == p.seqnum)
+                {
+                    tracker = i;
+                    break;
+                }
+            }
+            s->traced_cmt.erase(s->traced_cmt.begin(), s->traced_cmt.begin() + tracker + 1);
+        }
+        break;
+    case INPUT_A: // for rtt calc
+        if (!s->traced.size())
+            break;
+        if (wrap_sub(packet->acknum,1, LIMIT_SEQNO) == s->traced.front().first.seqnum)
+        {
+            double interval = time_now - s->traced.front().second;
+            if (interval < RXMT_TIMEOUT)
+            {
+                s->rtts.push_back(time_now - s->traced.front().second);
+            }
+            s->traced.pop_front();
+        }
+        else
+        {
+            tracker = 0;
+            for (int i = 0; i < (s->traced).size(); i++)
+            {
+                struct pkt p = s->traced[i].first;
+                if (wrap_sub(packet->acknum,1, LIMIT_SEQNO) == p.seqnum)
+                {
+                    tracker = i;
+                    break;
+                }
+            }
+            s->traced.erase(s->traced.begin(), s->traced.begin() + tracker + 1);
+        }
+        break;
+    case TIMEOUT:
+        if (!s->traced.size())
+            break;
+        tracker = 0;
+        for (int i = 0; i < (s->traced).size(); i++)
+        {
+            struct pkt p = s->traced[i].first;
+            if (packet->seqnum == p.seqnum)
+            {
+                tracker = i;
+                break;
+            }
+        }
+        s->traced.erase(s->traced.begin(), s->traced.begin() + tracker + 1);
+        break;
+
+    default:
+        break;
+    }
+}
+
+
+
+
 
 int push_history(int seqno_to_acknowledged, bool nodup) // push in the seqno not ackno
 {   
@@ -313,16 +327,6 @@ void A_output(msg message)
     }
 }
 
-bool inWindow(int first_unacked, int seqno)
-{
-    int max_seqno = wrap_add(first_unacked, WINDOW_SIZE, LIMIT_SEQNO);
-    if (max_seqno < first_unacked)
-    {
-        return (seqno >= max_seqno && seqno < first_unacked) ? false : true;
-    }
-    else
-        return (seqno >= max_seqno || seqno < first_unacked) ? false : true;
-}
 
 /** called from layer 3, when a packet arrives for layer 4 */
 void A_input(pkt packet)
@@ -335,6 +339,7 @@ void A_input(pkt packet)
         int first_unacked_anchor = first_unacked; // need an anchor to check the valid window for the sender buffer
         stoptimer(A);
         // remove the acked pkt and advance first_unacked
+        collect_stat(&s, INPUT_A_CMT, &packet);
         cout << "\tACKed history ";
         for(int i=0; i<5; i++)
             cout << packet.sack[i] << " ";
@@ -364,12 +369,20 @@ void A_input(pkt packet)
             if (inWindow(first_unacked, A_queue[i].seqnum))
             {
                 tolayer3(A, A_queue[i]);
+                if(!inWindow(first_unacked_anchor, A_queue[i].seqnum)) 
+                {
+                    collect_stat(&s, ORIGIN_A, &A_queue[i]);
+                    collect_stat(&s, TRACE_PKT, &A_queue[i]);
+                } else collect_stat(&s, RETRAN_A, &A_queue[i]);
                 flag=true;
             }
             else
                 break;
         }
-        if (flag) starttimer(A, RXMT_TIMEOUT);
+        if (flag) {
+            starttimer(A, RXMT_TIMEOUT);
+            print_message(START_TIMER, NULL);
+        }
     }
     else
     {
@@ -387,6 +400,7 @@ void A_timerinterrupt(void)
             if (inWindow(first_unacked, A_queue[i].seqnum))
             {
                 tolayer3(A, A_queue[i]);
+                collect_stat(&s, RETRAN_A, &A_queue[i]);
             }
             else
                 break;
