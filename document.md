@@ -34,7 +34,7 @@ make draw
 ### Experiment setup
 
 B | Loss Prob. | Corrupt Prob. | Num of messages | avg. time from layer5 | Window size | Retrans. timeout | Random Seed
---------| --------|----|--------|--------|---------|--------|---------|----------|--------|
+--------| --------|----|--------|--------|---------|--------|---------|
 
 
 
