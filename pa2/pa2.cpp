@@ -215,7 +215,8 @@ void A_output(msg message) {
     unsigned seq = wrap_add(first_unacked, queue_size, LIMIT_SEQNO);
     pkt outpkt = make_pkt(&message, seq, 0);
     cout << "\tSeqno " << outpkt.seqnum << " expected ackno "
-         << outpkt.seqnum + 1 << " checksum " << outpkt.checksum << endl;
+         << wrap_add(outpkt.seqnum, 1, LIMIT_SEQNO) << " checksum "
+         << outpkt.checksum << endl;
     A_queue.push_back(outpkt);
     if (queue_size < WINDOW_SIZE) {  // the new packet is within window
         cout << "\tFind an empty space in the sender window. Send to layer3. "
@@ -326,6 +327,7 @@ void B_input(pkt packet) {
                         tolayer5(B_window[next_expected_index]
                                      .second);  // in-order delivery
                         cout << "\tPkt delivered, seqno " << packet.seqnum
+                             << ", payload " << string(packet.payload, 20)
                              << endl;
                         collect_stat(DELIVER_B);
                         B_window[next_expected_index].first =
@@ -335,6 +337,9 @@ void B_input(pkt packet) {
                         next_expected = wrap_add(next_expected, 1, LIMIT_SEQNO);
                     } while (B_window[next_expected_index].first);
             }
+        } else {
+            cout << "Expected seqno " << next_expected << ", but received "
+                 << packet.seqnum << endl;
         }
         pkt ack =
             make_pkt(packet.payload, 0,
