@@ -27,7 +27,7 @@ An instance of `struct statistic` is dedicated to store all the statistical info
 
 ## Experiment 
 
-`experiment.sh` can run a range of randome seeds with loss/corrupt probability increases, and output the experiment statistics to a file. `plot.py` can read the generated stat file and do the ploting. To reproduce our experiment, do
+`experiment.sh` can run a range of randome seeds with loss/corrupt probability increases, and output the experiment statistics to a file. `plot.py` can read the generated stat file and do the ploting, also output `confidence_interval` as well. To reproduce our experiment, do
 ```
 make draw
 ```
