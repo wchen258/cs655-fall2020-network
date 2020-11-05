@@ -46,10 +46,10 @@ Num of original packets transmitted | Num of retransmissions | Num of packets de
 -----|------|-----|-----|-----|-----|-----|-----|-----|
 1000  | 487 | 1000 | 1216 | 227| 0.0961894 | 0.0929185| 10.8078 | 26.1019|
 
-**Loss Probability vs communicate time**
+#### Experiment plot
 
 ![p1p1](p1p1.png)
-
+*Loss Probability vs communicate time on 20 random seeds*
 
 
 
