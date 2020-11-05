@@ -67,5 +67,9 @@ Num of original packets transmitted | Num of retransmissions | Num of packets de
 1000 | 535 | 1000 | 1243 | 252 | 0.101872 | 0.101002 | 10.9825 | 26.5356
 
 
+### Experiment plot
 
+|![p2p1](p2p1.png)|![p2p2](p2p2.png)
+|:--:|:--:|
+| *Loss Prob. vs com. time on 20 random seeds* |*Corrupt Prob. vs com. time on 20 random seeds* |
 
