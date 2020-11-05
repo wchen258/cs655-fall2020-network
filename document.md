@@ -54,6 +54,37 @@ Num of original packets transmitted | Num of retransmissions | Num of packets de
 | *Loss Prob. vs com. time on 20 random seeds* |*Corrupt Prob. vs com. time on 20 random seeds* |
 
 
+### Confidence Interval 
+
+loss case interval|
+------------------|
+0.0 ('14.57', '15.12')
+0.1 ('19.17', '19.94')
+0.2 ('24.72', '26.02')
+0.3 ('32.08', '34.28')
+0.4 ('42.96', '46.04')
+0.5 ('60.90', '64.81')
+0.6 ('88.83', '96.77')
+0.7 ('138.36', '148.41')
+0.8 ('230.41', '253.84')
+0.9 ('524.95', '567.13')
+
+corrupt case interval |
+-------------------|
+0.0 ('14.54', '15.04')
+0.1 ('19.17', '19.94')
+0.2 ('24.56', '25.95')
+0.3 ('31.90', '33.49')
+0.4 ('43.94', '46.89')
+0.5 ('61.64', '66.36')
+0.6 ('89.56', '97.58')
+0.7 ('139.53', '152.06')
+0.8 ('234.84', '346.75')
+0.9 ('2279.67', '3119.56')
+
+
+
+
 TODO: Explain how you decided on the initial value of your retransmission timer, and how that value changes during the simulation. (Note: a static retransmission timer value is acceptable for this assignment.)
 
 
