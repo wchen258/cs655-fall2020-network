@@ -39,6 +39,7 @@ trace | 0.1 | 0.1 | 1000 | 200 | 8 | 30 | 1234 |
 exp1| 0~0.9 | 0.1 | 100 | 200 | 8 | 15 | 1000~1019|
 exp2 | 0.1 | 0~0.9 | 100 | 200 | 8 | 15 | 1000~1019|
 
+For exp1 and exp2, for each value of the error probability, 20 random seeds would be run to obtain statistically meaningful results. 
 
 **statistical result for trace**
 
@@ -73,3 +74,22 @@ Num of original packets transmitted | Num of retransmissions | Num of packets de
 |:--:|:--:|
 | *Loss Prob. vs com. time on 20 random seeds* |*Corrupt Prob. vs com. time on 20 random seeds* |
 
+
+# Discussion
+
+## GBN has faster error recovery than SR
+When the loss and corruption probability are low, SR and GBN exhibit similar performance. However as the probability increases, the advantage of GBN starts to emerge. For high probability, GBN with SACK implementation has over 10 times shorter average communication times compared with its counterpart in handling the loss, and has half average communciation time compared with the counterpart in handling packet loss. The better performance from GBN is expected, as for SR the exception recovery mechanism can only work with one packet at a time, this is not scalable for larger error probability. GBN on the other hand keeps sending unacked packet upon receving packets or timeout, although at low error probability this seems to be wasteful, for large error probability the recovery is much more effective compared with SR. 
+
+## Corruption and Loss rate have different impact on GBN
+
+Notice in our GBN for large error probability, the performance in loss case is still significantly better than in corruption case. This is due to the corrupt packet would still use the bandwidth of the channel, and the channel would be 'garbaged' thus long transmission time. If the packet is lost, the utilization of the channel would be low, thus faster transmission. The simulation environment does capture this behavior. 
+
+```
+lastime = time_now;
+    /* for (q=evlist; q!=NULL && q->next!=NULL; q = q->next) */
+    for (q = evlist; q != NULL; q = q->next)
+        if ((q->evtype == FROM_LAYER3 && q->eventity == evptr->eventity))
+            lastime = q->evtime;
+    evptr->evtime = lastime + 1 + 9 * mrand(2);
+```
+The arrival time is calculated based on the arrival time of the packets in front of the packet being calculated. Thus a crowded channel would produce a higher communication time. 
