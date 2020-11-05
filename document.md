@@ -53,6 +53,23 @@ Num of original packets transmitted | Num of retransmissions | Num of packets de
 | *Loss Prob. vs com. time on 20 random seeds* |*Corrupt Prob. vs com. time on 20 random seeds* |
 
 
+TODO: Explain how you decided on the initial value of your retransmission timer, and how that value changes during the simulation. (Note: a static retransmission timer value is acceptable for this assignment.)
 
 
+# GBN with SACK
+
+The experiments are conducted with the same parameters.
+
+**statistical result for trace**
+
+Num of original packets transmitted | Num of retransmissions | Num of packets delivered to layer 5 | Num of ACK packets sent| Num of corrupted packets| Ratio of lost packets | Ratio of corrupted packets |Average RTT|Average communication time|
+-----|------|-----|-----|-----|-----|-----|-----|-----|
+1000 | 535 | 1000 | 1243 | 252 | 0.101872 | 0.101002 | 10.9825 | 26.5356
+
+
+### Experiment plot
+
+|![p2p1](p2p1.png)|![p2p2](p2p2.png)
+|:--:|:--:|
+| *Loss Prob. vs com. time on 20 random seeds* |*Corrupt Prob. vs com. time on 20 random seeds* |
 
