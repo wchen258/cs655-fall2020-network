@@ -28,4 +28,26 @@ An instance of `struct statistic` is dedicated to store all the statistical info
 ## Experiment 
 
 `experiment.sh` can run a range of randome seeds with loss/corrupt probability increases, and output the experiment statistics to a file. `plot.py` can read the generated stat file and do the ploting. To reproduce our experiment, do
-```make draw```
+```
+make draw
+```
+### Experiment setup
+
+Exp | Loss Prob. | Corrupt Prob. | Num of messages | avg. time from layer5 | Window size | Retrans. timeout | Random Seed
+--------| --------|----|--------|--------|---------|--------|---------|
+trace | 0.1 | 0.1 | 1000 | 200 | 8 | 30 | 1234 | 
+exp1| 0~0.9 | 0.1 | 100 | 200 | 8 | 15 | 1000~1019|
+exp2 | 0.1 | 0~0.9 | 100 | 200 | 8 | 15 | 1000~1019|
+
+
+Below is the statistical result for trace
+
+Num of original packets transmitted | Num of retransmissions | Num of packets delivered to layer 5 | Num of ACK packets sent| Num of corrupted packets| Ratio of lost packets | Ratio of corrupted packets |Average RTT|Average communication time|
+-----|------|-----|-----|-----|-----|-----|-----|-----|
+1000  | 487 | 1000 | 1216 | 227| 0.0961894 | 0.0929185| 10.8078 | 26.1019|
+
+
+
+
+
+
