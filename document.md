@@ -77,7 +77,19 @@ Num of original packets transmitted | Num of retransmissions | Num of packets de
 
 # Discussion
 
+## GBN has faster error recovery than SR
 When the loss and corruption probability are low, SR and GBN exhibit similar performance. However as the probability increases, the advantage of GBN starts to emerge. For high probability, GBN with SACK implementation has over 10 times shorter average communication times compared with its counterpart in handling the loss, and has half average communciation time compared with the counterpart in handling packet loss. The better performance from GBN is expected, as for SR the exception recovery mechanism can only work with one packet at a time, this is not scalable for larger error probability. GBN on the other hand keeps sending unacked packet upon receving packets or timeout, although at low error probability this seems to be wasteful, for large error probability the recovery is much more effective compared with SR. 
 
-Notice in our GBN for large error probability, the performance in loss case is still significantly better than in corruption case. 
+## Corruption and Loss rate have different impact on GBN
 
+Notice in our GBN for large error probability, the performance in loss case is still significantly better than in corruption case. This is due to the corrupt packet would still use the bandwidth of the channel, and the channel would be 'garbaged' thus long transmission time. If the packet is lost, the utilization of the channel would be low, thus faster transmission. The simulation environment does capture this behavior. 
+
+```
+lastime = time_now;
+    /* for (q=evlist; q!=NULL && q->next!=NULL; q = q->next) */
+    for (q = evlist; q != NULL; q = q->next)
+        if ((q->evtype == FROM_LAYER3 && q->eventity == evptr->eventity))
+            lastime = q->evtime;
+    evptr->evtime = lastime + 1 + 9 * mrand(2);
+```
+The arrival time is calculated based on the arrival time of the packets in front of the packet being calculated. Thus a crowded channel would produce a higher communication time. 
