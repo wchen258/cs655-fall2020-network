@@ -25,6 +25,7 @@ An instance of `struct statistic` is dedicated to store all the statistical info
 
 `print_message` would handle some of the trace print based upon the event type. As the type traces varies a lot, some trace prints are directly done in the corresponding rountine without invoking `print_message`. 
 
-### Experiment pipeline 
+## Experiment 
 
-`experiment.sh` can run a range of randome seeds with loss/corrupt probability increases, and output the experiment statistics to a file. `plot.py` can read the generated stat file and do the ploting. To reproduce our experiment, use `make draw`.
+`experiment.sh` can run a range of randome seeds with loss/corrupt probability increases, and output the experiment statistics to a file. `plot.py` can read the generated stat file and do the ploting. To reproduce our experiment, do
+```make draw```
