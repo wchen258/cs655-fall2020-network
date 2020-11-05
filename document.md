@@ -73,7 +73,7 @@ TODO: Explain how you decided on the initial value of your retransmission timer,
 
 # GBN with SACK
 
-The experiments are conducted with the same parameters.
+The experiments are conducted with the same parameters. As we can see, GBN indeed retransmits more packets compared with SR under the same setting.
 
 **statistical result for trace**
 
