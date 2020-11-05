@@ -39,6 +39,7 @@ trace | 0.1 | 0.1 | 1000 | 200 | 8 | 30 | 1234 |
 exp1| 0~0.9 | 0.1 | 100 | 200 | 8 | 15 | 1000~1019|
 exp2 | 0.1 | 0~0.9 | 100 | 200 | 8 | 15 | 1000~1019|
 
+For exp1 and exp2, for each value of the error probability, 20 random seeds would be run to obtain statistically meaningful results. 
 
 **statistical result for trace**
 
