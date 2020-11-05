@@ -74,7 +74,7 @@ trace1 | 1000 | 122 | 1000 | 1122 | 0 | 0.0543672 | 0 | 9.95358 | 10.795
 
 |![p1p1](plots/p1plot_drop_rtt.png)|![p1p2](plots/p1plot_cor_rtt.png)
 |:--:|:--:|
-| *Loss Prob. vs rtt on 20 random seeds* |*Corrupt Prob. vs rtt on 20 random seeds* |
+| *Loss Prob. vs rtt on 20 random seeds. Missing field due to no eligible packet to track for RTT* |*Corrupt Prob. vs rtt on 20 random seeds. Missing field due to no eligible packet to track for RTT* |
 
 |![p1p1](plots/p1plot_drop_retrans.png)|![p1p2](plots/p1plot_cor_retrans.png)
 |:--:|:--:|
@@ -119,9 +119,17 @@ Num of original packets transmitted | Num of retransmissions | Num of packets de
 
 ### Experiment plot
 
-|![p2p1](p2p1.png)|![p2p2](p2p2.png)
+|![p1p1](plots/p2plot_drop_cmt.png)|![p1p2](plots/p2plot_cor_cmt.png)
 |:--:|:--:|
 | *Loss Prob. vs com. time on 20 random seeds* |*Corrupt Prob. vs com. time on 20 random seeds* |
+
+|![p1p1](plots/p2plot_drop_rtt.png)|![p1p2](plots/p2plot_cor_rtt.png)
+|:--:|:--:|
+| *Loss Prob. vs rtt on 20 random seeds. Missing field due to no eligible packet to track for RTT* |*Corrupt Prob. vs rtt on 20 random seeds. Missing field due to no eligible packet to track for RTT* |
+
+|![p1p1](plots/p2plot_drop_retrans.png)|![p1p2](plots/p2plot_cor_retrans.png)
+|:--:|:--:|
+| *Loss Prob. vs retrans on 20 random seeds* |*Corrupt Prob. vs retrans on 20 random seeds* |
 
 
 ### Confidence Interval 
