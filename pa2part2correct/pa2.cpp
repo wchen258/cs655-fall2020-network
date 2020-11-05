@@ -97,7 +97,8 @@ struct stat
 
 enum {
     ORIGIN_A, RETRAN_A, DELIVER_B, ACK_B, CORRUPT,
-    TRACE_PKT, UNTRACE, INPUT_A, TIMEOUT, INPUT_A_CMT
+    TRACE_PKT, UNTRACE, INPUT_A, TIMEOUT, INPUT_A_CMT,
+    INPUT_A_RTT
 };
 
 /**  checksum computation */
@@ -173,7 +174,7 @@ bool inWindow(int first_unacked, int seqno)
 
 
 
-void collect_stat(stat *s, int evt, pkt *packet)
+void collect_stat(stat *s, int evt, pkt *packet, double time_now = 0.0)
 {
     int tracker;
     switch (evt)
@@ -217,6 +218,23 @@ void collect_stat(stat *s, int evt, pkt *packet)
             }
         }
         break;
+    case INPUT_A_RTT:
+        // try to find whether the packet received presents in the traced deque
+        // if so, return the index, else keep -1
+        int index=-1;
+        for(int i=0; i<s->traced.size();i++){
+            if(s->traced[i].first.seqnum==wrap_sub(packet->acknum, 1, LIMIT_SEQNO)
+                && inWindow(first_unacked, packet->seqnum)) {
+                    index = i;
+                    break;
+                }
+        }
+
+        // if does find it, it should: the eligible packe to calc RTT, and delete all the pkts in traced before this
+        // due to channel does not reorder pkt
+        // if didn't find it, we ignore 
+
+
     case INPUT_A: // for rtt calc
         if (!s->traced.size())
             break;
@@ -264,9 +282,6 @@ void collect_stat(stat *s, int evt, pkt *packet)
         break;
     }
 }
-
-
-
 
 
 int push_history(int seqno_to_acknowledged, bool nodup) // push in the seqno not ackno
@@ -343,6 +358,9 @@ void A_input(pkt packet)
         for(int i=0; i<5; i++)
             cout << packet.sack[i] << " ";
         cout << endl;
+        if(wrap_sub(packet.acknum,1, LIMIT_SEQNO)==first_unacked) {
+            collect_stat(&s, INPUT_A_RTT, &packet, time_now);
+        }
         for (int i = 0; i < 5; i++)
         {
             int seqno_delete = packet.sack[i];
