@@ -8,6 +8,7 @@
 
 **Message/retransmission buffer**: Everytime when layer 5 uses the service, a packet would be created, as the seqence number could be determined right away. No matter whether the sender window still has space or not, the packet would be enqued into a packet double linked list. The logical sender window size is maintained by the base sender window index. Given a base index and the window size, the packets in the logical sender window could be identified. As a consequence, packets not in the logical window are the 'buffered message'. The buffer and the index are declared as `deque<pkt> A_queue` and `unsigned first_unacked`. 
 
+**Checksum calculation**: The calculation of the checksum is done by viewing a packet as a sequence of bytes, adding them up, and keeping only the least 8 significant bits. Prior to the checksum calculation, the checksum field in the packet is initialized to be zero, and would be assigned to the complement of the return of the checksum function. By doing so, on the receiver side, the validation could be compared with the return value of the checksum function and 0xFF.
 
 
 ## Foo
