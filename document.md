@@ -33,12 +33,19 @@ make draw
 ```
 ### Experiment setup
 
-B | Loss Prob. | Corrupt Prob. | Num of messages | avg. time from layer5 | Window size | Retrans. timeout | Random Seed
+Exp | Loss Prob. | Corrupt Prob. | Num of messages | avg. time from layer5 | Window size | Retrans. timeout | Random Seed
 --------| --------|----|--------|--------|---------|--------|---------|
+trace | 0.1 | 0.1 | 1000 | 200 | 8 | 30 | 1234 | 
 exp1| 0~0.9 | 0.1 | 100 | 200 | 8 | 15 | 1000~1019|
 exp2 | 0.1 | 0~0.9 | 100 | 200 | 8 | 15 | 1000~1019|
 
 
+Below is the statistical result for trace
+
+Number of original packets transmitted by A| Number of retransmissions by A | Number of data packets delivered to layer 5 at B| Number of ACK packets sent by B| Number of corrupted packets| Ratio of lost packets | Ratio of corrupted packets |Average RTT|Average communication time
+
+-----|------|-----|-----|-----|-----|-----|-----|-----|
+1000  | 487 | 1000 | 1216 | 227| 0.0961894 | 0.0929185| 10.8078 | 26.1019|
 
 
 
