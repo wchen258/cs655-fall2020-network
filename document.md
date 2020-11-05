@@ -14,6 +14,10 @@
 
 **A_timer**: Given the A_input implementation, upon a timer goes off, the packet at the front of the doubly linked list would be sent, as it is the first unacked packet in the sender window.
 
+### Receiver B
+
+**Receiver window**: The Receiver window is represented by a deque of two fields `vector<pair<bool, char[20]>> B_window`. The first is the messaged carried in the packet, and the second field is an boolean indicating whether the current index of the window has already buffered a message or not. As the base index (the next expected seqno) is changing, it's important to have an variable `next_expected_index` to indicate which index is used as the base of the receiver window. By doing so, upon B successfully received a packet, an offset could be calculated, and buffer the message into the correct place, and marked it as buffered. If the packet is the next expected packet by the reciever, advance the `next_expected_index` by 1 as well.  
+
 
 ## Foo
 ```
