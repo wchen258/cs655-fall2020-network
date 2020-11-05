@@ -369,12 +369,14 @@ void B_input(pkt packet) {
             make_pkt(packet.payload, 0,
                      next_expected);  // whether within window or not, send ack
         for (int i = 0, j = 1; i < 5 && j < B_window.size();
-             ++j)  // set SACK, j from 1 because sack!=ack
-            if (B_window[j].first) {
+             ++j) {  // set SACK, j from 1 because sack!=ack
+            int index = wrap_add(next_expected_index, j, WINDOW_SIZE);
+            if (B_window[index].first) {
                 int seq = wrap_add(next_expected, j, LIMIT_SEQNO);
                 ack.sack[i++] = seq;
                 cout << "\tAppend SACK " << seq << endl;
             }
+        }
         tolayer3(B, ack);
         cout << "\tAck sent to layer3 by B, ackno " << ack.acknum << endl;
         collect_stat(ACK_B);
