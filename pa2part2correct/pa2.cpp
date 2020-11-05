@@ -89,8 +89,8 @@ struct stat {
     int corrupt = 0;
     vector<double> rtts;
     vector<double> cmts;
-    deque<pair<pkt, double>> traced;
-    deque<pair<pkt, double>> traced_cmt;
+    deque<double> traced;
+    bool A_error = false;
 } s;
 
 enum {
@@ -100,10 +100,10 @@ enum {
     ACK_B,
     CORRUPT,
     TRACE_PKT,
-    INPUT_A,
-    TIMEOUT,
-    INPUT_A_CMT,
-    INPUT_A_RTT
+    A_NORMAL,
+    A_ERROR,
+    INPUT_A_RTT,
+    INPUT_A_CMT
 };
 
 /**  checksum computation */
@@ -120,6 +120,47 @@ unsigned wrap_add(unsigned n1, unsigned n2, unsigned period) {
 
 unsigned wrap_sub(unsigned n1, unsigned n2, unsigned period) {
     return (n1 + period - n2) % period;
+}
+
+void collect_stat(int evt) {
+    switch (evt) {
+    case ORIGIN_A:
+        s.origin_A++;
+        break;
+    case RETRAN_A:
+        s.retrans_A++;
+        break;
+    case DELIVER_B:
+        s.deliver_B++;
+        break;
+    case ACK_B:
+        s.ack_B++;
+        break;
+    case CORRUPT:
+        s.corrupt++;
+        break;
+    case TRACE_PKT:  // for rtt & cmt calc
+        s.traced.push_back(time_now);
+        break;
+    case INPUT_A_CMT:
+        s.cmts.push_back(time_now - s.traced.front());
+        s.traced.pop_front();
+        break;
+    case INPUT_A_RTT:
+        if (!s.A_error) {
+            double interval = time_now - s.traced.front();
+            s.rtts.push_back(interval);
+        }
+        break;
+    case A_NORMAL:  // for rtt calc
+        s.A_error = false;
+        break;
+    case A_ERROR:
+        s.A_error = true;
+        break;
+    default:
+        break;
+    }
 }
 
 enum { START_TIMER, PKT_CORRUPT };
@@ -156,112 +197,6 @@ unsigned next_expected =
 unsigned next_expected_index =
     0;  // index of the next expected packet in B_window
 
-bool inWindow(int first_unacked, int seqno) {
-    return wrap_sub(seqno, first_unacked, LIMIT_SEQNO) < WINDOW_SIZE;
-}
-
-void collect_stat(stat* s, int evt, pkt* packet, double time_now = 0.0) {
-    int tracker;
-    switch (evt) {
-    case ORIGIN_A:
-        s->origin_A++;
-        break;
-    case RETRAN_A:
-        s->retrans_A++;
-        break;
-    case DELIVER_B:
-        s->deliver_B++;
-        break;
-    case ACK_B:
-        s->ack_B++;
-        break;
-    case CORRUPT:
-        s->corrupt++;
-        break;
-    case TRACE_PKT:  // for rtt & cmt calc
-        s->traced.push_back(make_pair(*packet, time_now));
-        s->traced_cmt.push_back(make_pair(*packet, time_now));
-        break;
-    case INPUT_A_CMT:
-        for (int k = 0; k < 5; k++) {
-            if (!s->traced_cmt.size())
-                break;
-            int packno = packet->sack[k];
-            if (!inWindow(first_unacked, packno) || packno == -1)
-                continue;
-            for (int i = 0; i < (s->traced_cmt).size(); i++) {
-                struct pkt p = s->traced_cmt[i].first;
-                if (packno == p.seqnum) {
-                    double previous_time = s->traced_cmt[i].second;
-                    s->cmts.push_back(time_now - previous_time);
-                    tracker = i;
-                    s->traced_cmt.erase(s->traced_cmt.begin(),
-                                        s->traced_cmt.begin() + tracker + 1);
-                    break;
-                }
-            }
-        }
-        break;
-    case INPUT_A_RTT:
-        // try to find whether the packet received presents in the traced deque
-        // if so, return the index, else keep -1
-        {
-            int index = -1;
-            for (int i = 0; i < s->traced.size(); i++) {
-                if (s->traced[i].first.seqnum ==
-                        wrap_sub(packet->acknum, 1, LIMIT_SEQNO) &&
-                    inWindow(first_unacked, packet->seqnum)) {
-                    index = i;
-                    break;
-                }
-            }
-        }
-
-        // if does find it, it should: the eligible packe to calc RTT, and
-        // delete all the pkts in traced before this due to channel does not
-        // reorder pkt if didn't find it, we ignore
-
-    case INPUT_A:  // for rtt calc
-        if (!s->traced.size())
-            break;
-        if (wrap_sub(packet->acknum, 1, LIMIT_SEQNO) ==
-            s->traced.front().first.seqnum) {
-            double interval = time_now - s->traced.front().second;
-            if (interval < RXMT_TIMEOUT) {
-                s->rtts.push_back(time_now - s->traced.front().second);
-            }
-            s->traced.pop_front();
-        } else {
-            tracker = 0;
-            for (int i = 0; i < (s->traced).size(); i++) {
-                struct pkt p = s->traced[i].first;
-                if (wrap_sub(packet->acknum, 1, LIMIT_SEQNO) == p.seqnum) {
-                    tracker = i;
-                    break;
-                }
-            }
-            s->traced.erase(s->traced.begin(), s->traced.begin() + tracker + 1);
-        }
-        break;
-    case TIMEOUT:
-        if (!s->traced.size())
-            break;
-        tracker = 0;
-        for (int i = 0; i < (s->traced).size(); i++) {
-            struct pkt p = s->traced[i].first;
-            if (packet->seqnum == p.seqnum) {
-                tracker = i;
-                break;
-            }
-        }
-        s->traced.erase(s->traced.begin(), s->traced.begin() + tracker + 1);
-        break;
-
-    default:
-        break;
-    }
-}
-
 pkt make_pkt(const void* p_msg, int seq, int ack) {
     pkt packet;
     packet.seqnum = seq;
@@ -290,14 +225,14 @@ void A_output(msg message) {
         cout << "\tFind an empty space in the sender window. Send to layer3."
              << endl;
         tolayer3(A, outpkt);
-        collect_stat(&s, ORIGIN_A, &outpkt);
-        collect_stat(&s, TRACE_PKT, &outpkt);
+        collect_stat(ORIGIN_A);
+        collect_stat(TRACE_PKT);
         if (!queue_size) {  // if it's the first packet in the queue
             starttimer(A, RXMT_TIMEOUT);
             print_message(START_TIMER, NULL);
         }
     } else {
-        cout << "\tSender window has not space. Buffer the packet." << endl;
+        cout << "\tSender window has no space. Buffer the packet." << endl;
     }
 }
 
@@ -327,26 +262,25 @@ void A_input(pkt packet) {
             first_unacked = packet.acknum;
             cout << "\tNumber of pkt acked " << n_acked << endl;
             for (int i = 0; i < n_acked; ++i) {  // remove ACKed packets
-                // if (i == n_acked - 1)
-                //     collect_stat(INPUT_A_RTT);
-                // collect_stat(INPUT_A_CMT);
+                if (i == n_acked - 1)
+                    collect_stat(INPUT_A_RTT);
+                collect_stat(INPUT_A_CMT);
                 A_queue.pop_front();
             }
-            // collect_stat(A_NORMAL);
+            collect_stat(A_NORMAL);
             unsigned first_to_send = WINDOW_SIZE - n_acked,
                      first_outside_window =
                          min<unsigned>(WINDOW_SIZE, A_queue.size());
             while (first_to_send <
-                   first_outside_window)  // after sliding window, send newly
-                                          // included packets
-            {
-                // collect_stat(ORIGIN_A);
-                // collect_stat(TRACE_PKT);
+                   first_outside_window) {  // after sliding window, send newly
+                                            // included packets
+                collect_stat(ORIGIN_A);
+                collect_stat(TRACE_PKT);
                 cout << "\tSend pkt in the queue "
                      << A_queue[first_to_send].second.seqnum << " payload "
                      << string(A_queue[first_to_send].second.payload, 20);
                 tolayer3(A, A_queue[first_to_send++].second);
-            };
+            }
             cout << "\tWindow advanced by " << n_acked << endl;
             if (!A_queue.empty()) {
                 starttimer(A, RXMT_TIMEOUT);
@@ -363,13 +297,13 @@ void A_input(pkt packet) {
             for (int i = 0; i < end; ++i)
                 if (!A_queue[i].first) {  // not SACKed
                     tolayer3(A, A_queue[i].second);
+                    collect_stat(RETRAN_A);
                 }
-            // collect_stat(RETRAN_A);
-            // collect_stat(A_ERROR);
+            collect_stat(A_ERROR);
             starttimer(A, RXMT_TIMEOUT);
         }
     } else {
-        collect_stat(&s, CORRUPT, NULL);
+        collect_stat(CORRUPT);
         print_message(PKT_CORRUPT, &packet);
     }
 }
@@ -379,10 +313,11 @@ void A_timerinterrupt(void) {
     cout << "\nA_inter at time " << time_now << endl;
     unsigned end = min<unsigned>(WINDOW_SIZE, A_queue.size());
     for (int i = 0; i < end; ++i)
-        if (!A_queue[i].first)  // not SACKed
+        if (!A_queue[i].first) {  // not SACKed
             tolayer3(A, A_queue[i].second);
-    // collect_stat(&s, TIMEOUT, &A_queue.front());
-    // collect_stat(&s, RETRAN_A, &A_queue.front());
+            collect_stat(RETRAN_A);
+        }
+    collect_stat(A_ERROR);
     starttimer(A, RXMT_TIMEOUT);
     print_message(START_TIMER, NULL);
 }
@@ -413,7 +348,7 @@ void B_input(pkt packet) {
                              << ", payload "
                              << string(B_window[next_expected_index].second, 20)
                              << endl;
-                        collect_stat(&s, DELIVER_B, NULL);
+                        collect_stat(DELIVER_B);
                         B_window[next_expected_index].first =
                             false;  // mark as empty
                         next_expected_index =
@@ -431,9 +366,9 @@ void B_input(pkt packet) {
             }
         tolayer3(B, ack);
         cout << "\tAck sent to layer3 by B, ackno " << ack.acknum << endl;
-        collect_stat(&s, ACK_B, &ack);
+        collect_stat(ACK_B);
     } else {
-        collect_stat(&s, CORRUPT, NULL);
+        collect_stat(CORRUPT);
         print_message(PKT_CORRUPT, &packet);
     }
 }

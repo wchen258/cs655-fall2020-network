@@ -141,7 +141,7 @@ void collect_stat(int evt) {
         s.traced.push_back(time_now);
         break;
     case INPUT_A_CMT:
-        s.cmts.push_back(time_now - s.traced[0]);
+        s.cmts.push_back(time_now - s.traced.front());
         s.traced.pop_front();
         break;
     case INPUT_A_RTT:
@@ -260,16 +260,15 @@ void A_input(pkt packet) {
                      first_outside_window =
                          min<unsigned>(WINDOW_SIZE, A_queue.size());
             while (first_to_send <
-                   first_outside_window)  // after sliding window, send newly
-                                          // included packets
-            {
+                   first_outside_window) {  // after sliding window, send newly
+                                            // included packets
                 collect_stat(ORIGIN_A);
                 collect_stat(TRACE_PKT);
                 cout << "\tSend pkt in the queue "
                      << A_queue[first_to_send].seqnum << " payload "
                      << string(A_queue[first_to_send].payload, 20);
                 tolayer3(A, A_queue[first_to_send++]);
-            };
+            }
             cout << "\tWindow advanced by " << n_acked << endl;
             if (!A_queue.empty()) {
                 starttimer(A, RXMT_TIMEOUT);
@@ -370,7 +369,6 @@ void Simulation_done(void) {
     auto rtt = accumulate(s.rtts.begin(), s.rtts.end(), 0.0) / s.rtts.size();
     auto cmt_time =
         accumulate(s.cmts.begin(), s.cmts.end(), 0.0) / s.cmts.size();
-    cout << s.rtts.size() << endl;
     cout << "\n\n===============STATISTICS======================= \n" << endl;
     cout << "Number of original packets transmitted by A: " << s.origin_A
          << endl;
