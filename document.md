@@ -35,7 +35,8 @@ make draw
 
 B | Loss Prob. | Corrupt Prob. | Num of messages | avg. time from layer5 | Window size | Retrans. timeout | Random Seed
 --------| --------|----|--------|--------|---------|--------|---------|
-
+exp1| 0~0.9 | 0.1 | 100 | 200 | 8 | 15 | 1000~1019|
+exp2 | 0.1 | 0~0.9 | 100 | 200 | 8 | 15 | 1000~1019|
 
 
 
