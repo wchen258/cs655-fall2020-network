@@ -49,8 +49,9 @@ Num of original packets transmitted | Num of retransmissions | Num of packets de
 #### Experiment plot
 
 ![p1p1](p1p1.png)
-*Loss Probability vs communicate time on 20 random seeds*
+*Loss Prob. vs com. time on 20 random seeds*
 
-
+![p1p2](p1p2.png)
+*Corrupt Prob. vs com. time on 20 random seeds*
 
 
