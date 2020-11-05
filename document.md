@@ -2,7 +2,15 @@
 * Weifan Chen (U51902184)
 # Part 1
 ## Design
-* We use Python in both client and server. There's a `util.py` that encapsulates function `sendall` and `recv` of the builtin `socket` package which handle byte arrays, to deal with strings. The `util.py` is also capable of processing command line arguments:
+* We use C++ to implement the SR. The choice of data structure is as the following.
+
+### Sender A
+
+Message/retransmission buffer
+
+
+
+## 
 ```
 [liumeo@csa1 pa1part1]$ python3 client.py localhost
 usage: client.py [-h] host port
