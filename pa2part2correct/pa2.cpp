@@ -198,24 +198,23 @@ void collect_stat(stat *s, int evt, pkt *packet)
         s->traced_cmt.push_back(make_pair(*packet, time_now));
         break;
     case INPUT_A_CMT:
-        tracker = 0;
         for(int k=0;k<5;k++){
             if (!s->traced_cmt.size())
             break;
             int packno = packet->sack[k];
-            if(!inWindow(first_unacked, packno)) continue;
+            if(!inWindow(first_unacked, packno) || packno==-1) continue;
             for (int i = 0; i < (s->traced_cmt).size(); i++)
             {
                 struct pkt p = s->traced_cmt[i].first;
-                double previous_time = s->traced_cmt[i].second;
-                s->cmts.push_back(time_now - previous_time);
                 if (packno == p.seqnum)
                 {
+                    double previous_time = s->traced_cmt[i].second;
+                    s->cmts.push_back(time_now - previous_time);
                     tracker = i;
+                    s->traced_cmt.erase(s->traced_cmt.begin(), s->traced_cmt.begin() + tracker + 1);
                     break;
                 }
             }
-            s->traced_cmt.erase(s->traced_cmt.begin(), s->traced_cmt.begin() + tracker + 1);
         }
         break;
     case INPUT_A: // for rtt calc
@@ -490,6 +489,7 @@ void Simulation_done(void)
     for (auto &n : s.cmts)
         cmt_time += n;
     cmt_time /= s.cmts.size();
+    cout << "debug " << s.cmts.size() << endl;
 
     cout << "\n\n===============STATISTICS======================= \n"
          << endl;
