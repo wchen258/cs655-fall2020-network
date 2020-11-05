@@ -407,7 +407,6 @@ void Simulation_done(void) {
     auto rtt = accumulate(s.rtts.begin(), s.rtts.end(), 0.0) / s.rtts.size();
     auto cmt_time =
         accumulate(s.cmts.begin(), s.cmts.end(), 0.0) / s.cmts.size();
-    cout << "debug " << s.cmts.size() << endl;
 
     cout << "\n\n===============STATISTICS======================= \n" << endl;
     cout << "Number of original packets transmitted by A: " << s.origin_A
