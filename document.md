@@ -23,7 +23,7 @@ At first we tried C. But we didn't want to discard packets that fell out of the 
 
 So we choosed `deque` provided by C++ STL, which supports O(1) push/pop at front (for ACKed packets) and end (for new packets to send), plus random access (for new packets that fall into the window). Moreover, the space cost is linear. So we can say we achieved best performance in data structure (given that out-of-buffer packets are all preserved).
 
-## Test
+## Test & Statistics
 
 ### Stat collection and trace 
 
@@ -74,20 +74,31 @@ trace1 | 1000 | 122 | 1000 | 1122 | 0 | 0.0543672 | 0 | 9.95358 | 10.795
 
 ### Confidence Interval 
 
-loss case 95% interval|corrupt case 95 % interval |
-------------------|-------------------|
-0.0 ('14.67', '15.21') |0.0 ('14.57', '15.08')
-0.1 ('19.39', '20.30')|0.1 ('19.39', '20.30')
-0.2 ('25.53', '27.01')|0.2 ('25.27', '26.73')
-0.3 ('34.27', '37.30')|0.3 ('33.77', '35.91')
-0.4 ('47.46', '52.32')|0.4 ('46.89', '51.11')
-0.5 ('73.79', '82.58')|0.5 ('74.25', '82.56')
-0.6 ('131.70', '159.35')|0.6 ('132.45', '154.88')
-0.7 ('378.76', '570.17')|0.7 ('408.06', '577.71')
-0.8 ('2357.23', '2744.99')|0.8 ('2310.78', '2643.06')
-0.9 ('6608.00', '8317.99')|0.9 ('6322.98', '8294.97')
+P|loss case 95% interval|corrupt case 95 % interval |
+-|------------------|-------------------|
+0.0|('14.66', '15.22')|('14.56', '15.09')
+0.1|('19.38', '20.31')|('19.38', '20.31')
+0.2|('25.51', '27.03')|('25.25', '26.75')
+0.3|('34.23', '37.34')|('33.75', '35.94')
+0.4|('47.40', '52.38')|('46.83', '51.17')
+0.5|('73.67', '82.70')|('74.14', '82.67')
+0.6|('131.34', '159.71')|('132.15', '155.17')
+0.7|('376.27', '572.66')|('408.06', '577.71')
+0.8|('2352.19', '2750.03')|('2306.46', '2647.38')
+0.9|('6585.79', '8340.20')|('6297.37', '8320.58')
 
 # GBN with SACK
+
+## Design
+* We extends our SR implementation to finish GBN, so here we focus on differences only.
+
+### Simulator
+Simulator is modified a bit to adapt to new sack field in the packet.
+### Compile & run
+Same with SR.
+## Test & Statistics
+
+## Experiment
 
 The experiments are conducted with the same parameters. As we can see, GBN indeed retransmits more packets compared with SR under the same setting.
 
