@@ -79,7 +79,7 @@ extern double time_now;      // simulation time, for your debug purpose
 
 typedef unsigned char byte;
 
-struct stat {
+struct statistics {
     int origin_A = 0;  // num of origin pkt trans by A
     int retrans_A = 0;
     int deliver_B = 0;
