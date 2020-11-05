@@ -218,7 +218,7 @@ void A_output(msg message) {
          << outpkt.checksum << endl;
     A_queue.push_back(outpkt);
     if (queue_size < WINDOW_SIZE) {  // the new packet is within window
-        cout << "\tFind an empty space in the sender window. Send to layer3. "
+        cout << "\tFind an empty space in the sender window. Send to layer3."
              << endl;
         tolayer3(A, outpkt);
         collect_stat(ORIGIN_A);

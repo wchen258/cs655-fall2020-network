@@ -141,14 +141,13 @@ void print_message(int situation, pkt* packet) {
 }
 
 /** variables for A */
-deque<pkt> A_queue;  // A's linear buffer, [0:WINDOW_SIZE] for packets sent but
-                     // not ACKed, [WINDOW_SIZE:] for packets wait to be sent
+deque<pair<bool, pkt>>
+    A_queue;  // A's linear buffer, [0:WINDOW_SIZE] for packets sent, [0] is not
+              // ACKed, [1: WINDOW_SIZE] may be SACKed, [WINDOW_SIZE:] for
+              // packets wait to be sent
 unsigned first_unacked = FIRST_SEQNO;  // sequence number of A_deque[0]
 
-/** veriables for B */
-deque<int>
-    B_sack;  // initialized to be size five, val=-1, and always keeps size=5
-
+/** variables for B */
 vector<pair<bool, char[20]>>
     B_window;  // B's cicular buffer (length is WINDOW_SIZE), for packets
                // received but not delivered
@@ -263,29 +262,12 @@ void collect_stat(stat* s, int evt, pkt* packet, double time_now = 0.0) {
     }
 }
 
-int push_history(int seqno_to_acknowledged,
-                 bool nodup)  // push in the seqno not ackno
-{
-    if (nodup) {
-        for (int i = 0; i < 5; i++) {
-            if (B_sack[i] == seqno_to_acknowledged)
-                return 0;
-        }
-    }
-    B_sack.pop_front();
-    B_sack.push_back(seqno_to_acknowledged);
-    return B_sack.size() == 5 ? 0 : -1;
-}
-
 pkt make_pkt(const void* p_msg, int seq, int ack) {
     pkt packet;
     packet.seqnum = seq;
     packet.acknum = ack;
     packet.checksum = 0;
     memcpy(packet.payload, p_msg, sizeof(msg));
-    for (int i = 0; i < 5; i++)
-        packet.sack[i] =
-            B_sack[i];  // save acked seqno, NOT ackno which is seqno+1
     packet.checksum = (byte)~get_checksum(&packet, sizeof(pkt));
     return packet;
 }
@@ -303,9 +285,9 @@ void A_output(msg message) {
     cout << "\tSeqno " << outpkt.seqnum << " expected ackno "
          << wrap_add(outpkt.seqnum, 1, LIMIT_SEQNO) << " checksum "
          << outpkt.checksum << endl;
-    A_queue.push_back(outpkt);
+    A_queue.emplace_back(false, outpkt);
     if (queue_size < WINDOW_SIZE) {  // the new packet is within window
-        cout << "\tFind an empty space in the sneder window. Send to layer3 "
+        cout << "\tFind an empty space in the sender window. Send to layer3."
              << endl;
         tolayer3(A, outpkt);
         collect_stat(&s, ORIGIN_A, &outpkt);
@@ -327,53 +309,64 @@ void A_input(pkt packet) {
              << (unsigned int)get_checksum(&packet, sizeof(pkt)) << endl;
         cout << "\tACKno " << packet.acknum << " first_unacked_no "
              << first_unacked << endl;
-        int first_unacked_anchor =
-            first_unacked;  // need an anchor to check the valid window for the
-                            // sender buffer
-        stoptimer(A);
-        // remove the acked pkt and advance first_unacked
-        collect_stat(&s, INPUT_A_CMT, &packet);
-        cout << "\tACKed history ";
-        for (int i = 0; i < 5; i++)
-            cout << packet.sack[i] << " ";
-        cout << endl;
-        if (wrap_sub(packet.acknum, 1, LIMIT_SEQNO) == first_unacked) {
-            collect_stat(&s, INPUT_A_RTT, &packet, time_now);
-        }
-        for (int i = 0; i < 5; i++) {
-            int seqno_delete = packet.sack[i];
-            if (seqno_delete == -1)
-                continue;  // during the very first ack from B, -1 to indicate
-                           // no ack history
-            for (int k = 0; k < A_queue.size(); k++) {
-                if (!inWindow(first_unacked_anchor, A_queue[k].seqnum))
-                    break;
-                if (seqno_delete == A_queue[k].seqnum) {
-                    A_queue.erase(A_queue.begin() + k);
-                    if (seqno_delete == first_unacked)
-                        first_unacked = wrap_add(first_unacked, 1, LIMIT_SEQNO);
-                    break;
-                }
+        unsigned n_acked =
+            wrap_sub(packet.acknum, first_unacked,
+                     LIMIT_SEQNO);  // the number of newly acked packets, range
+                                    // [0, WINDOW_SIZE]
+        for (int i = 0; i < 5; ++i) {  // Flag SACKed packets
+            int seq = packet.sack[i];
+            if (seq != -1) {
+                cerr << wrap_sub(seq, first_unacked, LIMIT_SEQNO) << ' '
+                     << A_queue.size() << endl;
+                A_queue[wrap_sub(seq, first_unacked, LIMIT_SEQNO)].first = true;
             }
         }
-        // send to layer3 for all eligible packet
-
-        int flag = false;
-        for (int i = 0; i < A_queue.size(); i++) {
-            if (inWindow(first_unacked, A_queue[i].seqnum)) {
-                tolayer3(A, A_queue[i]);
-                if (!inWindow(first_unacked_anchor, A_queue[i].seqnum)) {
-                    collect_stat(&s, ORIGIN_A, &A_queue[i]);
-                    collect_stat(&s, TRACE_PKT, &A_queue[i]);
-                } else
-                    collect_stat(&s, RETRAN_A, &A_queue[i]);
-                flag = true;
-            } else
-                break;
-        }
-        if (flag) {
+        if (n_acked) {
+            stoptimer(A);
+            cout << "\tTimer stops at " << time_now << endl;
+            first_unacked = packet.acknum;
+            cout << "\tNumber of pkt acked " << n_acked << endl;
+            for (int i = 0; i < n_acked; ++i) {  // remove ACKed packets
+                // if (i == n_acked - 1)
+                //     collect_stat(INPUT_A_RTT);
+                // collect_stat(INPUT_A_CMT);
+                A_queue.pop_front();
+            }
+            // collect_stat(A_NORMAL);
+            unsigned first_to_send = WINDOW_SIZE - n_acked,
+                     first_outside_window =
+                         min<unsigned>(WINDOW_SIZE, A_queue.size());
+            while (first_to_send <
+                   first_outside_window)  // after sliding window, send newly
+                                          // included packets
+            {
+                // collect_stat(ORIGIN_A);
+                // collect_stat(TRACE_PKT);
+                cout << "\tSend pkt in the queue "
+                     << A_queue[first_to_send].second.seqnum << " payload "
+                     << string(A_queue[first_to_send].second.payload, 20);
+                tolayer3(A, A_queue[first_to_send++].second);
+            };
+            cout << "\tWindow advanced by " << n_acked << endl;
+            if (!A_queue.empty()) {
+                starttimer(A, RXMT_TIMEOUT);
+                print_message(START_TIMER, NULL);
+            }
+        } else if (!A_queue.empty()) {  // duplicate ack when there exists
+            // unACKed packet
+            cout << "\tDuplicated ACK recieved. Restart timer at " << time_now
+                 << " planned inter at " << time_now + RXMT_TIMEOUT << endl;
+            // cout << "\tRetransmitted packet seqno " << A_queue.front().seqnum
+            //      << " payload " << string(A_queue.front().payload, 20);
+            stoptimer(A);
+            unsigned end = min<unsigned>(WINDOW_SIZE, A_queue.size());
+            for (int i = 0; i < end; ++i)
+                if (!A_queue[i].first) {  // not SACKed
+                    tolayer3(A, A_queue[i].second);
+                }
+            // collect_stat(RETRAN_A);
+            // collect_stat(A_ERROR);
             starttimer(A, RXMT_TIMEOUT);
-            print_message(START_TIMER, NULL);
         }
     } else {
         collect_stat(&s, CORRUPT, NULL);
@@ -384,13 +377,10 @@ void A_input(pkt packet) {
 /** called when A's timer goes off */
 void A_timerinterrupt(void) {
     cout << "\nA_inter at time " << time_now << endl;
-    for (int i = 0; i < A_queue.size(); i++) {
-        if (inWindow(first_unacked, A_queue[i].seqnum)) {
-            tolayer3(A, A_queue[i]);
-            collect_stat(&s, RETRAN_A, &A_queue[i]);
-        } else
-            break;
-    }
+    unsigned end = min<unsigned>(WINDOW_SIZE, A_queue.size());
+    for (int i = 0; i < end; ++i)
+        if (!A_queue[i].first)  // not SACKed
+            tolayer3(A, A_queue[i].second);
     // collect_stat(&s, TIMEOUT, &A_queue.front());
     // collect_stat(&s, RETRAN_A, &A_queue.front());
     starttimer(A, RXMT_TIMEOUT);
@@ -405,7 +395,8 @@ void A_init(void) {}
 void B_input(pkt packet) {
     cout << "\nB_input at time " << time_now << endl;
     if (get_checksum(&packet, sizeof(pkt)) == 0xFF) {
-        push_history(packet.seqnum, false);
+        cout << "\tReceived seqno " << packet.seqnum << ", expected seqno "
+             << next_expected << endl;
         unsigned offset = wrap_sub(packet.seqnum, next_expected, LIMIT_SEQNO);
         if (offset < WINDOW_SIZE) {  // within window
             unsigned index =
@@ -418,7 +409,9 @@ void B_input(pkt packet) {
                     do {
                         tolayer5(B_window[next_expected_index]
                                      .second);  // in-order delivery
-                        cout << "\tPkt delivered, seqno " << packet.seqnum
+                        cout << "\tPkt delivered, seqno " << next_expected_index
+                             << ", payload "
+                             << string(B_window[next_expected_index].second, 20)
                              << endl;
                         collect_stat(&s, DELIVER_B, NULL);
                         B_window[next_expected_index].first =
@@ -432,6 +425,10 @@ void B_input(pkt packet) {
         pkt ack =
             make_pkt(packet.payload, 0,
                      next_expected);  // whether within window or not, send ack
+        for (int i = 0, j = 0; i < 5 && j < B_window.size(); ++j)  // set SACK
+            if (B_window[j].first) {
+                ack.sack[i++] = wrap_add(next_expected, j, LIMIT_SEQNO);
+            }
         tolayer3(B, ack);
         cout << "\tAck sent to layer3 by B, ackno " << ack.acknum << endl;
         collect_stat(&s, ACK_B, &ack);
@@ -444,25 +441,21 @@ void B_input(pkt packet) {
 /** the following rouytine will be called once (only) before any other
  entity B routines are called. You can use it to do any initialization */
 void B_init(void) {
-    B_window.resize(WINDOW_SIZE);
-    B_sack = deque<int>(5, -1);
+    B_window.resize(WINDOW_SIZE);  // allocate fixed-size space
 }
 
 /** called at end of simulation to print final statistics */
 void Simulation_done(void) {
     /* TO PRINT THE STATISTICS, FILL IN THE DETAILS BY PUTTING VARIBALE NAMES.
      * DO NOT CHANGE THE FORMAT OF PRINTED OUTPUT */
-    float lost_ratio = ((float)s.retrans_A - s.corrupt) /
-                       ((float)s.origin_A + s.retrans_A + s.ack_B);
-    float corr_ratio = ((float)s.corrupt) / ((float)s.origin_A + s.retrans_A +
-                                             s.ack_B - s.retrans_A + s.corrupt);
+    float lost_ratio =
+        (float)(s.retrans_A - s.corrupt) / (s.origin_A + s.retrans_A + s.ack_B);
+    float corr_ratio = (float)s.corrupt / (s.origin_A + s.retrans_A + s.ack_B -
+                                           s.retrans_A + s.corrupt);
 
     auto rtt = accumulate(s.rtts.begin(), s.rtts.end(), 0.0) / s.rtts.size();
     auto cmt_time =
         accumulate(s.cmts.begin(), s.cmts.end(), 0.0) / s.cmts.size();
-    for (auto& n : s.cmts)
-        cmt_time += n;
-    cmt_time /= s.cmts.size();
     cout << "debug " << s.cmts.size() << endl;
 
     cout << "\n\n===============STATISTICS======================= \n" << endl;
@@ -592,9 +585,9 @@ int main(int argc, char** argv) {
             /** done **/
             for (i = 0; i < 20; i++)
                 pkt2give.payload[i] = eventptr->pktptr->payload[i];
-            if (eventptr->eventity == A) { /* deliver packet by calling */
-                A_input(pkt2give);         /* appropriate entity */
-            } else
+            if (eventptr->eventity == A) /* deliver packet by calling */
+                A_input(pkt2give);       /* appropriate entity */
+            else
                 B_input(pkt2give);
             free(eventptr->pktptr); /* free the memory for packet */
         } else if (eventptr->evtype == TIMER_INTERRUPT) {
@@ -808,8 +801,7 @@ void tolayer3(int AorB, pkt packet)
     mypktptr->acknum = packet.acknum;
     mypktptr->checksum = packet.checksum;
     /*wf: add support for sack */
-    int j;
-    for (j = 0; j < 5; j++) {
+    for (int j = 0; j < 5; j++) {
         mypktptr->sack[j] = packet.sack[j];
     }
     /*wf: end */
