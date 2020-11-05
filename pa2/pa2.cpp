@@ -98,7 +98,6 @@ enum {
     ACK_B,
     CORRUPT,
     TRACE_PKT,
-    UNTRACE,
     A_NORMAL,
     A_ERROR,
     INPUT_A_RTT,
@@ -210,8 +209,8 @@ pkt make_pkt(const void* p_msg, int seq, int ack) {
 void A_output(msg message) {
     cout << "\nA_output at time " << time_now << endl;
     cout << "\tMessage from A layer 5 " << string(message.data, 20);
-    cout << "\tCurrent sender buffer size " << A_queue.size() << endl;
     unsigned queue_size = A_queue.size();
+    cout << "\tCurrent sender buffer size " << queue_size << endl;
     unsigned seq = wrap_add(first_unacked, queue_size, LIMIT_SEQNO);
     pkt outpkt = make_pkt(&message, seq, 0);
     cout << "\tSeqno " << outpkt.seqnum << " expected ackno "
