@@ -46,13 +46,13 @@ Num of original packets transmitted | Num of retransmissions | Num of packets de
 -----|------|-----|-----|-----|-----|-----|-----|-----|
 1000  | 487 | 1000 | 1216 | 227| 0.0961894 | 0.0929185| 10.8078 | 26.1019|
 
-#### Experiment plot
+### Experiment plot
 
-|![p1p1](p1p1.png)|
-|:--:|
-| *Loss Prob. vs com. time on 20 random seeds* |
+|![p1p1](p1p1.png)|![p1p2](p1p2.png)
+|:--:|:--:|
+| *Loss Prob. vs com. time on 20 random seeds* |*Corrupt Prob. vs com. time on 20 random seeds* |
 
-![p1p2](p1p2.png)
-*Corrupt Prob. vs com. time on 20 random seeds*
+
+
 
 
