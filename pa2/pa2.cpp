@@ -314,7 +314,7 @@ void A_init(void) {}
 void B_input(pkt packet) {
     cout << "\nB_input at time " << time_now << endl;
     if (get_checksum(&packet, sizeof(pkt)) == 0xFF) {
-        cout << "Received seqno " << packet.seqnum << ", expected seqno"
+        cout << "\tReceived seqno " << packet.seqnum << ", expected seqno"
              << next_expected << endl;
         unsigned offset = wrap_sub(packet.seqnum, next_expected, LIMIT_SEQNO);
         if (offset < WINDOW_SIZE) {  // within window
