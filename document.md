@@ -2,7 +2,15 @@
 * Weifan Chen (U51902184)
 # Part 1
 ## Design
-* We use Python in both client and server. There's a `util.py` that encapsulates function `sendall` and `recv` of the builtin `socket` package which handle byte arrays, to deal with strings. The `util.py` is also capable of processing command line arguments:
+* We use C++ to implement the SR. The choice of data structure is as the following.
+
+### Sender A
+
+**Message/retransmission buffer**: Everytime when layer 5 uses the service, a packet would be created, as the seqence number could be determined right away. No matter whether the sender window still has space or not, the packet would be enqued into a packet double linked list. The logical sender window size is maintained by the base sender window index. Given a base index and the window size, the packets in the logical sender window could be identified. As a consequence, packets not in the logical window are the 'buffered message'. The buffer and the index are declared as `deque<pkt> A_queue` and `unsigned first_unacked`. 
+
+
+
+## Foo
 ```
 [liumeo@csa1 pa1part1]$ python3 client.py localhost
 usage: client.py [-h] host port
