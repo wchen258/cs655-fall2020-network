@@ -40,6 +40,8 @@ make draw
 Exp | Loss Prob. | Corrupt Prob. | Num of messages | avg. time from layer5 | Window size | Retrans. timeout | Random Seed
 --------| --------|----|--------|--------|---------|--------|---------|
 trace | 0.1 | 0.1 | 1000 | 200 | 8 | 30 | 1234 | 
+trace0 | 0 | 0 | 1000 | 200 | 8 | 20 | 1234
+trace1 | 0 | 0 | 1000 | 200 | 8 | 15 | 1234
 exp1| 0~0.9 | 0.1 | 100 | 200 | 8 | 15 | 1000~1019|
 exp2 | 0.1 | 0~0.9 | 100 | 200 | 8 | 15 | 1000~1019|
 
@@ -47,9 +49,11 @@ For exp1 and exp2, for each value of the error probability, 20 random seeds woul
 
 **statistical result for trace**
 
-Num of original packets transmitted | Num of retransmissions | Num of packets delivered to layer 5 | Num of ACK packets sent| Num of corrupted packets| Ratio of lost packets | Ratio of corrupted packets |Average RTT|Average communication time|
------|------|-----|-----|-----|-----|-----|-----|-----|
-1000  | 487 | 1000 | 1216 | 227| 0.0961894 | 0.0929185| 10.8078 | 26.1019|
+Num of original packets transmitted | Num of retransmissions | Num of packets delivered to layer 5 | Num of ACK packets sent| Num of corrupted packets| Ratio of exps | lost packets | Ratio of corrupted packets |Average RTT|Average communication time|
+|----|-----|------|-----|-----|-----|-----|-----|-----|-----|
+trace | 1000  | 487 | 1000 | 1216 | 227| 0.0961894 | 0.0929185| 10.8078 | 26.1019|
+trace0 | 1000 | 0 | 1000 | 1000 | 0 | 0 | 0 | 10.7616 | 10.7616
+trace1 | 1000 | 122 | 1000 | 1122 | 0 | 0.0543672 | 0 | 9.95358 | 10.795
 
 ### Experiment plot
 
