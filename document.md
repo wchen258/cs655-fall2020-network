@@ -73,3 +73,10 @@ Num of original packets transmitted | Num of retransmissions | Num of packets de
 |:--:|:--:|
 | *Loss Prob. vs com. time on 20 random seeds* |*Corrupt Prob. vs com. time on 20 random seeds* |
 
+
+# Discussion
+
+When the loss and corruption probability are low, SR and GBN exhibit similar performance. However as the probability increases, the advantage of GBN starts to emerge. For high probability, GBN with SACK implementation has over 10 times shorter average communication times compared with its counterpart in handling the loss, and has half average communciation time compared with the counterpart in handling packet loss. The better performance from GBN is expected, as for SR the exception recovery mechanism can only work with one packet at a time, this is not scalable for larger error probability. GBN on the other hand keeps sending unacked packet upon receving packets or timeout, although at low error probability this seems to be wasteful, for large error probability the recovery is much more effective compared with SR. 
+
+Notice in our GBN for large error probability, the performance in loss case is still significantly better than in corruption case. 
+
