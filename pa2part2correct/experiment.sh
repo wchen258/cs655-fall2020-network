@@ -12,7 +12,7 @@ echo "Start drop probability experiment"
 for p in $(seq 0.0 0.1 0.9)
 do
 for i in {1000..1019}; do
-    echo 1000 "$p" 0.1 200 8 15 1 "$i" | ./pa2 > temp
+    echo 100 "$p" 0.1 200 8 15 1 "$i" | ./pa2 > temp
     result=$(grep "Average communication time: " temp)
     result=${result#$prefix_cmt}
     echo "$result","$p","$i" >> drop_exp
@@ -22,10 +22,10 @@ done
 rm -f temp
 
 echo "Start corrupt probability experiment"
-for p in $(seq 0.0 0.1 0.7)
+for p in $(seq 0.0 0.1 0.9)
 do
 for i in {1000..1019}; do
-    echo 1000 0.1 "$p" 200 8 15 1 "$i" | ./pa2 > temp
+    echo 100 0.1 "$p" 200 8 15 1 "$i" | ./pa2 > temp
     result=$(grep "Average communication time: " temp)
     result=${result#$prefix_cmt}
     echo "$result","$p","$i" >> corrupt_exp
