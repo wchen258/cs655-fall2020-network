@@ -7,7 +7,7 @@ test: compile
 test_alot: compile
 	./test_alot
 draw: corrupt_exp drop_exp
-	python3 plot.py
+	python3 plot.py > confidence_interval
 corrupt_exp: compile
 	bash experiment.sh
 drop_exp: corrupt_exp
