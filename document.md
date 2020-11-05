@@ -19,4 +19,12 @@
 **Receiver window**: The Receiver window is represented by a deque of two fields `vector<pair<bool, char[20]>> B_window`. The first is the messaged carried in the packet, and the second field is an boolean indicating whether the current index of the window has already buffered a message or not. As the base index (the next expected seqno) is changing, it's important to have an variable `next_expected_index` to indicate which index is used as the base of the receiver window. By doing so, upon B successfully received a packet, an offset could be calculated, and buffer the message into the correct place, and marked it as buffered. If the packet is the next expected packet by the reciever, advance the `next_expected_index` by 1 as well, and mark the delivered index as unbuffered, as it is used as the tail of the receiver buffer window.
 
 
-### 
+### Stat collection and trace 
+
+An instance of `struct statistic` is dedicated to store all the statistical information. Since the simulation is built upon event, `collect_stat` could take appropriate action based upon the event type parameter. It would also write to the statistic instance. 
+
+`print_message` would handle some of the trace print based upon the event type. As the type traces varies a lot, some trace prints are directly done in the corresponding rountine without invoking `print_message`. 
+
+### Experiment pipeline 
+
+`experiment.sh` can run a range of randome seeds with loss/corrupt probability increases, and output the experiment statistics to a file. `plot.py` can read the generated stat file and do the ploting. To reproduce our experiment, use `make draw`.
