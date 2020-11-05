@@ -326,7 +326,7 @@ void B_input(pkt packet) {
                     do {
                         tolayer5(B_window[next_expected_index]
                                      .second);  // in-order delivery
-                        cout << "\tPkt delivered, seqno " << next_expected_index
+                        cout << "\tPkt delivered, seqno " << next_expected
                              << ", payload "
                              << string(B_window[next_expected_index].second, 20)
                              << endl;

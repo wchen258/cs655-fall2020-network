@@ -257,6 +257,7 @@ void A_input(pkt packet) {
             if (seq != -1) {
                 int index = wrap_sub(seq, first_unacked, LIMIT_SEQNO);
                 A_queue[index].first = true;
+                cout << "\tReceive SACK " << seq << endl;
                 collect_stat(INPUT_A_CMT, index);
             }
         }
@@ -351,7 +352,7 @@ void B_input(pkt packet) {
                     do {
                         tolayer5(B_window[next_expected_index]
                                      .second);  // in-order delivery
-                        cout << "\tPkt delivered, seqno " << next_expected_index
+                        cout << "\tPkt delivered, seqno " << next_expected
                              << ", payload "
                              << string(B_window[next_expected_index].second, 20)
                              << endl;
@@ -370,7 +371,9 @@ void B_input(pkt packet) {
         for (int i = 0, j = 1; i < 5 && j < B_window.size();
              ++j)  // set SACK, j from 1 because sack!=ack
             if (B_window[j].first) {
-                ack.sack[i++] = wrap_add(next_expected, j, LIMIT_SEQNO);
+                int seq = wrap_add(next_expected, j, LIMIT_SEQNO);
+                ack.sack[i++] = seq;
+                cout << "\tAppend SACK " << seq << endl;
             }
         tolayer3(B, ack);
         cout << "\tAck sent to layer3 by B, ackno " << ack.acknum << endl;
