@@ -16,7 +16,7 @@
 
 ### Receiver B
 
-**Receiver window**: The Receiver window is represented by a deque of two fields `vector<pair<bool, char[20]>> B_window`. The first is the messaged carried in the packet, and the second field is an boolean indicating whether the current index of the window has already buffered a message or not. As the base index (the next expected seqno) is changing, it's important to have an variable `next_expected_index` to indicate which index is used as the base of the receiver window. By doing so, upon B successfully received a packet, an offset could be calculated, and buffer the message into the correct place, and marked it as buffered. If the packet is the next expected packet by the reciever, advance the `next_expected_index` by 1 as well.  
+**Receiver window**: The Receiver window is represented by a deque of two fields `vector<pair<bool, char[20]>> B_window`. The first is the messaged carried in the packet, and the second field is an boolean indicating whether the current index of the window has already buffered a message or not. As the base index (the next expected seqno) is changing, it's important to have an variable `next_expected_index` to indicate which index is used as the base of the receiver window. By doing so, upon B successfully received a packet, an offset could be calculated, and buffer the message into the correct place, and marked it as buffered. If the packet is the next expected packet by the reciever, advance the `next_expected_index` by 1 as well, and mark the delivered index as unbuffered, as it is used as the tail of the receiver buffer window.
 
 
 ## Foo
