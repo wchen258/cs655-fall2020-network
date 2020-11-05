@@ -201,12 +201,14 @@ unsigned next_expected =
 unsigned next_expected_index =
     0;  // index of the next expected packet in B_window
 
-pkt make_pkt(const void* p_msg, int seq, int ack) {
+pkt make_pkt(const void* p_msg, int seq, int ack, vector<int> sack = {}) {
     pkt packet;
     packet.seqnum = seq;
     packet.acknum = ack;
     packet.checksum = 0;
     memcpy(packet.payload, p_msg, sizeof(msg));
+    for (int i = 0; i < sack.size(); ++i)
+        packet.sack[i] = sack[i];
     packet.checksum = (byte)~get_checksum(&packet, sizeof(pkt));
     return packet;
 }
@@ -365,18 +367,19 @@ void B_input(pkt packet) {
                     } while (B_window[next_expected_index].first);
             }
         }
-        pkt ack =
-            make_pkt(packet.payload, 0,
-                     next_expected);  // whether within window or not, send ack
+        vector<int> sack;
         for (int i = 0, j = 1; i < 5 && j < B_window.size();
              ++j) {  // set SACK, j from 1 because sack!=ack
             int index = wrap_add(next_expected_index, j, WINDOW_SIZE);
             if (B_window[index].first) {
                 int seq = wrap_add(next_expected, j, LIMIT_SEQNO);
-                ack.sack[i++] = seq;
+                sack.push_back(seq);
+                ++i;
                 cout << "\tAppend SACK " << seq << endl;
             }
         }
+        pkt ack = make_pkt(packet.payload, 0, next_expected,
+                           sack);  // whether within window or not, send ack
         tolayer3(B, ack);
         cout << "\tAck sent to layer3 by B, ackno " << ack.acknum << endl;
         collect_stat(ACK_B);
