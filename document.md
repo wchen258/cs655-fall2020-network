@@ -19,15 +19,22 @@
 **Receiver window**: The Receiver window is represented by a fixed-size circular buffer of two fields `vector<pair<bool, char[20]>> B_window`. The second is the messaged carried in the packet, and the first field is a boolean indicating whether the current index of the window has already buffered a message or not. As the base index (the next expected seqno) is changing, it's important to have a variable `next_expected_index` to indicate which index is used as the base of the receiver window. By doing so, upon B successfully received a packet, an offset could be calculated, and buffer the message into the correct place, and marked it as buffered. If the packet is the next expected packet by the reciever, advance the `next_expected_index` by 1 as well, and mark the delivered index as unbuffered, then it is used as the tail of the receiver buffer window. If the new `B_window[next_expected_index]` contains a buffered message, deliver it and go on.
 
 ### Tradeoffs & Extensions
-At first we tried C. But we didn't want to discard packets that fell out of the sender's buffer. Nor did we want to implement a dynamically growing buffer because it was error-prune, and we would have to spend lots of time distinguishing data-structure error and network algorithm error. It counldn't be easily shrinked either, when ACKs were received. So we choosed `deque` provided by C++ STL, which supports O(1) push/pop at front (for ACKed packets) and end (for new packets to send), plus random access (for new packets that fall into the window). Moreover, the space cost is linear. So we can say we achieved best performance in data structure (given that out-of-buffer packets are all preserved).
+At first we tried C. But we didn't want to discard packets that fell out of the sender's buffer. Nor did we want to implement a dynamically growing buffer because it was error-prune, and we would have to spend lots of time distinguishing data-structure error and network algorithm error. It counldn't be easily shrinked either, when ACKs were received.
+
+So we choosed `deque` provided by C++ STL, which supports O(1) push/pop at front (for ACKed packets) and end (for new packets to send), plus random access (for new packets that fall into the window). Moreover, the space cost is linear. So we can say we achieved best performance in data structure (given that out-of-buffer packets are all preserved).
 
 ## Test
 
 ### Stat collection and trace 
 
-An instance of `struct statistic` is dedicated to store all the statistical information. Since the simulation is built upon event, `collect_stat` could take appropriate action based upon the event type parameter. It would also write to the statistic instance. 
+An instance of `struct statistics` is dedicated to store all the statistical information. Since the simulation is built upon event, `collect_stat` could take appropriate action based upon the event type parameter. It would also write to the statistic instance.
+
+What's worth mentioned is that there's a boolean variable to indicate whether A is in error state (duplicate ACK, timeout). That's used because RTT is only valid when A is in normal state.
 
 `print_message` would handle some of the trace print based upon the event type. As the type traces varies a lot, some trace prints are directly done in the corresponding rountine without invoking `print_message`. 
+
+### Compile & run
+`make`, then `./pa2`. To run with the given sample, `make test`.
 
 ## Experiment 
 
@@ -35,6 +42,10 @@ An instance of `struct statistic` is dedicated to store all the statistical info
 ```
 make draw
 ```
+### About retransmission timeout
+
+As the single-way delay is on average 5, we choose 15 as the static retransmission timer value when performing the experiment, which seems to work properly.
+
 ### Experiment setup
 
 Exp | Loss Prob. | Corrupt Prob. | Num of messages | avg. time from layer5 | Window size | Retrans. timeout | Random Seed
@@ -71,9 +82,6 @@ loss case 95% interval|corrupt case 95 % interval |
 0.7 ('378.76', '570.17')|0.7 ('408.06', '577.71')
 0.8 ('2357.23', '2744.99')|0.8 ('2310.78', '2643.06')
 0.9 ('6608.00', '8317.99')|0.9 ('6322.98', '8294.97')
-
-TODO: Explain how you decided on the initial value of your retransmission timer, and how that value changes during the simulation. (Note: a static retransmission timer value is acceptable for this assignment.)
-
 
 # GBN with SACK
 

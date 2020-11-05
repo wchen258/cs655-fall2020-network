@@ -5,9 +5,10 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
+
 def conf_interval(arr, Z=1.96):
     mean = np.average(arr)
-    std = np.std(arr)
+    std = np.std(arr, ddof=1)
     upper = mean + Z * std / np.sqrt(20)
     lower = mean - Z * std / np.sqrt(20)
     return f'{lower:.2f}', f'{upper:.2f}'
@@ -18,11 +19,9 @@ def cout_conf_interval(df, Z=1.96):
     for i in range(10):
         start = i*20
         arr = df.iloc[start:(start+20), 0]
-        # print(arr)
-        # prob = i*0.1
         inter = conf_interval(arr, Z)
         d[f'0.{i}'] = inter
-        print(f'0.{i}' , inter)
+        print(f'0.{i}', inter)
     return d
 
 
