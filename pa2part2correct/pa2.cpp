@@ -122,7 +122,7 @@ unsigned wrap_sub(unsigned n1, unsigned n2, unsigned period) {
     return (n1 + period - n2) % period;
 }
 
-void collect_stat(int evt) {
+void collect_stat(int evt, int index = 0) {
     switch (evt) {
     case ORIGIN_A:
         s.origin_A++;
@@ -139,16 +139,20 @@ void collect_stat(int evt) {
     case CORRUPT:
         s.corrupt++;
         break;
-    case TRACE_PKT:  // for rtt & cmt calc
-        s.traced.push_back(time_now);
+    case TRACE_PKT:                     // for rtt & cmt calc
+        s.traced.push_back(-time_now);  // negative for not (S)ACKed
         break;
     case INPUT_A_CMT:
-        s.cmts.push_back(time_now - s.traced.front());
-        s.traced.pop_front();
+        if (s.traced[index] < 0)  // newly (S)ACKed packet
+            s.traced[index] += time_now;
+        if (index == 0) {  // newly ACKed packet
+            s.cmts.push_back(s.traced.front());
+            s.traced.pop_front();
+        }
         break;
     case INPUT_A_RTT:
         if (!s.A_error) {
-            double interval = time_now - s.traced.front();
+            double interval = time_now + s.traced.front();
             s.rtts.push_back(interval);
         }
         break;
@@ -251,9 +255,9 @@ void A_input(pkt packet) {
         for (int i = 0; i < 5; ++i) {  // Flag SACKed packets
             int seq = packet.sack[i];
             if (seq != -1) {
-                cerr << wrap_sub(seq, first_unacked, LIMIT_SEQNO) << ' '
-                     << A_queue.size() << endl;
-                A_queue[wrap_sub(seq, first_unacked, LIMIT_SEQNO)].first = true;
+                int index = wrap_sub(seq, first_unacked, LIMIT_SEQNO);
+                A_queue[index].first = true;
+                collect_stat(INPUT_A_CMT, index);
             }
         }
         if (n_acked) {
@@ -290,12 +294,13 @@ void A_input(pkt packet) {
             // unACKed packet
             cout << "\tDuplicated ACK recieved. Restart timer at " << time_now
                  << " planned inter at " << time_now + RXMT_TIMEOUT << endl;
-            // cout << "\tRetransmitted packet seqno " << A_queue.front().seqnum
-            //      << " payload " << string(A_queue.front().payload, 20);
             stoptimer(A);
             unsigned end = min<unsigned>(WINDOW_SIZE, A_queue.size());
             for (int i = 0; i < end; ++i)
                 if (!A_queue[i].first) {  // not SACKed
+                    cout << "\tRetransmitted packet seqno "
+                         << A_queue[i].second.seqnum << " payload "
+                         << string(A_queue[i].second.payload, 20);
                     tolayer3(A, A_queue[i].second);
                     collect_stat(RETRAN_A);
                 }
@@ -314,6 +319,8 @@ void A_timerinterrupt(void) {
     unsigned end = min<unsigned>(WINDOW_SIZE, A_queue.size());
     for (int i = 0; i < end; ++i)
         if (!A_queue[i].first) {  // not SACKed
+            cout << "\tRetransmitted packet seqno " << A_queue[i].second.seqnum
+                 << " payload " << string(A_queue[i].second.payload, 20);
             tolayer3(A, A_queue[i].second);
             collect_stat(RETRAN_A);
         }
@@ -360,7 +367,8 @@ void B_input(pkt packet) {
         pkt ack =
             make_pkt(packet.payload, 0,
                      next_expected);  // whether within window or not, send ack
-        for (int i = 0, j = 0; i < 5 && j < B_window.size(); ++j)  // set SACK
+        for (int i = 0, j = 1; i < 5 && j < B_window.size();
+             ++j)  // set SACK, j from 1 because sack!=ack
             if (B_window[j].first) {
                 ack.sack[i++] = wrap_add(next_expected, j, LIMIT_SEQNO);
             }
