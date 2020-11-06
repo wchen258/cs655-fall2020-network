@@ -424,12 +424,9 @@ void Simulation_done(void) {
     cout << "Average RTT: " << rtt << endl;
     cout << "Average communication time: " << cmt_time << endl;
     cout << "==================================================" << endl;
-
-    /* PRINT YOUR OWN STATISTIC HERE TO CHECK THE CORRECTNESS OF YOUR PROGRAM */
-    // printf("\nEXTRA: \n");
-    /* EXAMPLE GIVEN BELOW */
-    /* printf("Example statistic you want to check e.g. number of ACK packets
-     * received by A : <YourVariableHere>"); */
+    cout << "Throughput: " << (s.origin_A + s.retrans_A) * 160 / time_now
+         << endl;
+    cout << "Goodput: " << s.deliver_B * 160 / time_now << endl;
 }
 
 /*****************************************************************

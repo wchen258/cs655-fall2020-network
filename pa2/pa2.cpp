@@ -366,7 +366,8 @@ void Simulation_done(void) {
     float corr_ratio = (float)s.corrupt / (s.origin_A + s.retrans_A + s.ack_B -
                                            s.retrans_A + s.corrupt);
 
-    auto rtt = accumulate(s.rtts.begin(), s.rtts.end(), 0.0) / max<unsigned>(s.rtts.size(), 1);
+    auto rtt = accumulate(s.rtts.begin(), s.rtts.end(), 0.0) /
+               max<unsigned>(s.rtts.size(), 1);
     auto cmt_time =
         accumulate(s.cmts.begin(), s.cmts.end(), 0.0) / s.cmts.size();
     cout << "\n\n===============STATISTICS======================= \n" << endl;
@@ -382,12 +383,9 @@ void Simulation_done(void) {
     cout << "Average RTT: " << rtt << endl;
     cout << "Average communication time: " << cmt_time << endl;
     cout << "==================================================" << endl;
-
-    /* PRINT YOUR OWN STATISTIC HERE TO CHECK THE CORRECTNESS OF YOUR PROGRAM */
-    // printf("\nEXTRA: \n");
-    /* EXAMPLE GIVEN BELOW */
-    /* printf("Example statistic you want to check e.g. number of ACK packets
-     * received by A : <YourVariableHere>"); */
+    cout << "Throughput: " << (s.origin_A + s.retrans_A) * 160 / time_now
+         << endl;
+    cout << "Goodput: " << s.deliver_B * 160 / time_now << endl;
 }
 
 /*****************************************************************
