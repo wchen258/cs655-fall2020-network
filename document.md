@@ -80,6 +80,14 @@ trace1 | 1000 | 122 | 1000 | 1122 | 0 | 0.0543672 | 0 | 9.95358 | 10.795
 |:--:|:--:|
 | *Loss Prob. vs retrans on 20 random seeds* |*Corrupt Prob. vs retrans on 20 random seeds* |
 
+|![p1p1](plots/p1plot_drop_tput.png)|![p1p2](plots/p1plot_cor_tput.png)
+|:--:|:--:|
+| *Loss Prob. vs retrans on 20 random seeds* |*Corrupt Prob. vs retrans on 20 random seeds* |
+
+|![p1p1](plots/p1plot_drop_gput.png)|![p1p2](plots/p1plot_cor_gput.png)
+|:--:|:--:|
+| *Loss Prob. vs retrans on 20 random seeds* |*Corrupt Prob. vs retrans on 20 random seeds* |
+
 ### Confidence Interval for average communication time
 
 P|loss case 95% interval|corrupt case 95 % interval |
