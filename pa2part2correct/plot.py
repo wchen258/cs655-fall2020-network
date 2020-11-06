@@ -28,8 +28,8 @@ def cout_conf_interval(df, Z=1.96):
 
 if __name__ == '__main__':
 
-    if not os.path.exists('my_folder'):
-        os.makedirs('my_folder')
+    if not os.path.exists('../plots'):
+        os.makedirs('../plots')
 
 
     sns.set_style("darkgrid", {"axes.facecolor": ".9"})
@@ -57,9 +57,10 @@ if __name__ == '__main__':
     data = pd.read_csv('drop_exp', names=['ave_cmt', 'prob', 'rands', 'rtt', 'retrans'])
     data.fillna(0, inplace=True)
     data = data.iloc[:, [1,3]]
+    data.loc[data['rtt'] > 100, 'rtt'] = 0
     print("loss case interval")
     cout_conf_interval(data)
-    plot = sns.pointplot('prob', 'rtt', data=data, dodge=True, join=True)
+    plot = sns.pointplot('prob', 'rtt', data=data, dodge=True, join=False)
     fig = plot.get_figure()
     fig.savefig('../plots/p2plot_drop_rtt.png')
 
@@ -68,9 +69,10 @@ if __name__ == '__main__':
     data = pd.read_csv('corrupt_exp', names=['ave_cmt', 'prob', 'rands', 'rtt', 'retrans'])
     data.fillna(0, inplace=True)
     data = data.iloc[:, [1,3]]
+    data.loc[data['rtt'] > 100, 'rtt'] = 0
     print("loss case interval")
     cout_conf_interval(data)
-    plot = sns.pointplot('prob', 'rtt', data=data, dodge=True, join=True)
+    plot = sns.pointplot('prob', 'rtt', data=data, dodge=True, join=False)
     fig = plot.get_figure()
     fig.savefig('../plots/p2plot_cor_rtt.png')
 
