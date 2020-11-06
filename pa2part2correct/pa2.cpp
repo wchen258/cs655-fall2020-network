@@ -404,7 +404,7 @@ void Simulation_done(void) {
     float corr_ratio = (float)s.corrupt / (s.origin_A + s.retrans_A + s.ack_B -
                                            s.retrans_A + s.corrupt);
 
-    auto rtt = accumulate(s.rtts.begin(), s.rtts.end(), 0.0) / s.rtts.size();
+    auto rtt = accumulate(s.rtts.begin(), s.rtts.end(), 0.0) / max<unsigned>(s.rtts.size(), 1);
     auto cmt_time =
         accumulate(s.cmts.begin(), s.cmts.end(), 0.0) / s.cmts.size();
 
