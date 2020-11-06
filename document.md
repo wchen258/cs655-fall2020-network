@@ -10,9 +10,9 @@
 
 **Checksum calculation**: The calculation of the `get_checksum` is done by viewing a packet as a sequence of bytes, adding them up, and keeping only the least 8 significant bits. Prior to the checksum calculation, the checksum field in the packet is initialized to be zero as defined in `make_pkt`, and would be assigned to the complement of the return of the checksum function. By doing so, on the receiver side, the validation could be compared with the return value of the checksum function and 0xFF. 
 
-**A_input implementation**: Upon a successful reception of a packet, the difference between the acknowledgement number and the sender window base number, could tell how many indices the window could advance, and pop the packets in the buffer accordingly. With the new base index, the sender would also send the packets newly fallen into the logical window range if any. As the base index is adjusted based on reception information, any duplicated ACK nubmers would not be larger than the base index, thus retransmission can be performed.
+**A_input**: Upon a successful reception of a packet, the difference between the acknowledgement number and the sender window base number, could tell how many indices the window could advance, and pop the packets in the buffer accordingly. With the new base index, the sender would also send the packets newly fallen into the logical window range if any. As the base index is adjusted based on reception information, any duplicated ACK nubmers would not be larger than the base index, thus retransmission can be performed.
 
-**A_timer**: Given the A_input implementation, upon a timer goes off, the packet at the front of the deque would be sent, as it is the first unacked packet in the sender window.
+**A_timerinterrupt**: Given the A_input implementation, upon a timer goes off, the packet at the front of the deque would be sent, as it is the first unacked packet in the sender window.
 
 ### Receiver B
 
@@ -90,13 +90,29 @@ P|loss case 95% interval|corrupt case 95 % interval |
 # GBN with SACK
 
 ## Design
-* We extends our SR implementation to finish GBN, so here we focus on differences only.
+* We extends our SR implementation to finish GBN, so here we focus on differences only. These can also be shown using `diff` command easily.
+
+### Sender A
+
+**Message/retransmission buffer**: We add a boolean field to `A_queue` to show whether a packet is SACKed.
+
+**A_input**: Add steps that A flags SACKed packets. And on duplicate ACK, retransmit all unSACKed packets.
+
+**A_timerinterrupt**: On timeout, retransmit all unSACKed packets.
+
+### Receiver B
+
+**B_input**: When sending ACK, carry the sequence number of the first (up to) 5 received packets after the sequence number of the next expected packet.
 
 ### Simulator
 Simulator is modified a bit to adapt to new sack field in the packet.
+
 ### Compile & run
 Same with SR.
+
 ## Test & Statistics
+
+For communication time, as we should take SACK into consideration, we stores the negative time of every packet in the `A_queue`. Thus when receiving SACK, the sign of the time can tell whether it's already SACKed. For newly ACKed packet, we add current time to it making it positive.
 
 ## Experiment
 
