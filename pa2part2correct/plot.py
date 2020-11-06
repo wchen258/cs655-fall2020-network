@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import warnings
+import os
 
 warnings.filterwarnings("ignore")
 
@@ -26,6 +27,11 @@ def cout_conf_interval(df, Z=1.96):
 
 
 if __name__ == '__main__':
+
+    if not os.path.exists('my_folder'):
+        os.makedirs('my_folder')
+
+
     sns.set_style("darkgrid", {"axes.facecolor": ".9"})
 
     data = pd.read_csv('corrupt_exp', names=['ave_cmt', 'prob', 'rands', 'rtt', 'retrans'])
@@ -49,6 +55,7 @@ if __name__ == '__main__':
     fig.clf()
 
     data = pd.read_csv('drop_exp', names=['ave_cmt', 'prob', 'rands', 'rtt', 'retrans'])
+    data.fillna(0, inplace=True)
     data = data.iloc[:, [1,3]]
     print("loss case interval")
     cout_conf_interval(data)
@@ -59,6 +66,7 @@ if __name__ == '__main__':
     fig.clf()
 
     data = pd.read_csv('corrupt_exp', names=['ave_cmt', 'prob', 'rands', 'rtt', 'retrans'])
+    data.fillna(0, inplace=True)
     data = data.iloc[:, [1,3]]
     print("loss case interval")
     cout_conf_interval(data)
