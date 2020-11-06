@@ -385,7 +385,7 @@ void Simulation_done(void) {
     cout << "==================================================" << endl;
     cout << "Throughput: "
          << (s.origin_A + s.retrans_A) * 8 * sizeof(pkt) / time_now << endl;
-    cout << "Goodput: " << s.deliver_B * sizeof(msg) / time_now << endl;
+    cout << "Goodput: " << s.deliver_B * 8 * sizeof(msg) / time_now << endl;
 }
 
 /*****************************************************************
