@@ -125,6 +125,13 @@ For communication time, as we should take SACK into consideration, we stores the
 ## Experiment
 
 The experiments are conducted with the same parameters. As we can see, GBN indeed retransmits more packets compared with SR under the same setting.
+Exp | Loss Prob. | Corrupt Prob. | Num of messages | avg. time from layer5 | Window size | Retrans. timeout | Random Seed
+--------| --------|----|--------|--------|---------|--------|---------|
+trace | 0.1 | 0.1 | 1000 | 200 | 8 | 30 | 1234 | 
+trace0 | 0 | 0 | 1000 | 200 | 8 | 20 | 1234
+trace1 | 0 | 0 | 1000 | 200 | 8 | 15 | 1234
+exp1| 0~0.9 | 0.1 | 100 | 200 | 8 | 15 | 1000~1019|
+exp2 | 0.1 | 0~0.9 | 100 | 200 | 8 | 15 | 1000~1019|
 
 **statistical result for trace**
 
