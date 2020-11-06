@@ -128,9 +128,11 @@ The experiments are conducted with the same parameters. As we can see, GBN indee
 
 **statistical result for trace**
 
-Num of original packets transmitted | Num of retransmissions | Num of packets delivered to layer 5 | Num of ACK packets sent| Num of corrupted packets| Ratio of lost packets | Ratio of corrupted packets |Average RTT|Average communication time|
------|------|-----|-----|-----|-----|-----|-----|-----|
-1000 | 535 | 1000 | 1243 | 252 | 0.101872 | 0.101002 | 10.9825 | 26.5356
+Num of original packets transmitted | Num of retransmissions | Num of packets delivered to layer 5 | Num of ACK packets sent| Num of corrupted packets| Ratio of Exp | lost packets | Ratio of corrupted packets |Average RTT|Average communication time|
+|-----| -----|------|-----|-----|-----|-----|-----|-----|-----|
+trace | 1000 | 535 | 1000 | 1243 | 252 | 0.101872 | 0.101002 | 10.9825 | 26.5356
+trace0 | 1000 | 0 | 1000 | 1000 | 0 | 0 | 0 | 10.7616 | 10.7616
+trace1 | 1000 | 136 | 1000 | 1136 | 0 | 0.05985 | 0 | 9.93833 | 10.8192
 
 
 ### Experiment plot
