@@ -152,7 +152,9 @@ void collect_stat(int evt, int index = 0) {
         break;
     case INPUT_A_RTT:
         if (!s.A_error) {
-            double interval = time_now + s.traced.front();
+            double interval = s.traced.front();
+            if (interval < 0)
+                interval += time_now;
             s.rtts.push_back(interval);
         }
         break;
@@ -404,7 +406,8 @@ void Simulation_done(void) {
     float corr_ratio = (float)s.corrupt / (s.origin_A + s.retrans_A + s.ack_B -
                                            s.retrans_A + s.corrupt);
 
-    auto rtt = accumulate(s.rtts.begin(), s.rtts.end(), 0.0) / max<unsigned>(s.rtts.size(), 1);
+    auto rtt = accumulate(s.rtts.begin(), s.rtts.end(), 0.0) /
+               max<unsigned>(s.rtts.size(), 1);
     auto cmt_time =
         accumulate(s.cmts.begin(), s.cmts.end(), 0.0) / s.cmts.size();
 
