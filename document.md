@@ -1,5 +1,5 @@
-* Qijia Liu (U19831657)
-* Weifan Chen (U51902184)
+* Qijia Liu (U19831657) mainly writes SR part
+* Weifan Chen (U51902184) mainly writes GBN part
 # Selective Repeat
 ## Design
 * We use C++ to implement the SR.
