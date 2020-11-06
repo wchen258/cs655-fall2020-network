@@ -424,9 +424,9 @@ void Simulation_done(void) {
     cout << "Average RTT: " << rtt << endl;
     cout << "Average communication time: " << cmt_time << endl;
     cout << "==================================================" << endl;
-    cout << "Throughput: " << (s.origin_A + s.retrans_A) * 160 / time_now
-         << endl;
-    cout << "Goodput: " << s.deliver_B * 160 / time_now << endl;
+    cout << "Throughput: "
+         << (s.origin_A + s.retrans_A) * 8 * sizeof(pkt) / time_now << endl;
+    cout << "Goodput: " << s.deliver_B * sizeof(msg) / time_now << endl;
 }
 
 /*****************************************************************
