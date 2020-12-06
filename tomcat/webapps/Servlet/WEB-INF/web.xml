@@ -1,11 +1,15 @@
 <web-app>
     <servlet>
-        <servlet-name>myServlet</servlet-name>
+        <servlet-name>MyServlet</servlet-name>
         <servlet-class>servletclass.Servlet</servlet-class>
     </servlet>
 
     <servlet-mapping>
-        <servlet-name>myServlet</servlet-name>
+        <servlet-name>MyServlet</servlet-name>
         <url-pattern>/servlet</url-pattern>
     </servlet-mapping>
+
+    <welcome-file-list>
+        <welcome-file>index.jsp</welcome-file>
+    </welcome-file-list>
 </web-app>
