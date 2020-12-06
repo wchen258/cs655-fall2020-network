@@ -1,0 +1,43 @@
+NOTE: Picked up JDK_JAVA_OPTIONS:  --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.rmi/sun.rmi.transport=ALL-UNNAMED
+06-Dec-2020 00:00:57.287 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Server version name:   Apache Tomcat/9.0.40
+06-Dec-2020 00:00:57.290 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Server built:          Nov 12 2020 15:35:02 UTC
+06-Dec-2020 00:00:57.290 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Server version number: 9.0.40.0
+06-Dec-2020 00:00:57.290 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log OS Name:               Mac OS X
+06-Dec-2020 00:00:57.290 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log OS Version:            10.15.5
+06-Dec-2020 00:00:57.290 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Architecture:          x86_64
+06-Dec-2020 00:00:57.290 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Java Home:             /Library/Java/JavaVirtualMachines/adoptopenjdk-11.jdk/Contents/Home
+06-Dec-2020 00:00:57.291 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log JVM Version:           11.0.7+10
+06-Dec-2020 00:00:57.291 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log JVM Vendor:            AdoptOpenJDK
+06-Dec-2020 00:00:57.291 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log CATALINA_BASE:         /Users/jackie/Downloads/tomcat
+06-Dec-2020 00:00:57.291 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log CATALINA_HOME:         /Users/jackie/Downloads/tomcat
+06-Dec-2020 00:00:57.299 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: --add-opens=java.base/java.lang=ALL-UNNAMED
+06-Dec-2020 00:00:57.300 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: --add-opens=java.base/java.io=ALL-UNNAMED
+06-Dec-2020 00:00:57.300 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: --add-opens=java.rmi/sun.rmi.transport=ALL-UNNAMED
+06-Dec-2020 00:00:57.300 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Djava.util.logging.config.file=/Users/jackie/Downloads/tomcat/conf/logging.properties
+06-Dec-2020 00:00:57.300 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Djava.util.logging.manager=org.apache.juli.ClassLoaderLogManager
+06-Dec-2020 00:00:57.300 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Djdk.tls.ephemeralDHKeySize=2048
+06-Dec-2020 00:00:57.300 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Djava.protocol.handler.pkgs=org.apache.catalina.webresources
+06-Dec-2020 00:00:57.300 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Dorg.apache.catalina.security.SecurityListener.UMASK=0027
+06-Dec-2020 00:00:57.301 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Dignore.endorsed.dirs=
+06-Dec-2020 00:00:57.301 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Dcatalina.base=/Users/jackie/Downloads/tomcat
+06-Dec-2020 00:00:57.301 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Dcatalina.home=/Users/jackie/Downloads/tomcat
+06-Dec-2020 00:00:57.301 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Djava.io.tmpdir=/Users/jackie/Downloads/tomcat/temp
+06-Dec-2020 00:00:57.304 INFO [main] org.apache.catalina.core.AprLifecycleListener.lifecycleEvent The Apache Tomcat Native library which allows using OpenSSL was not found on the java.library.path: [/Users/jackie/Library/Java/Extensions:/Library/Java/Extensions:/Network/Library/Java/Extensions:/System/Library/Java/Extensions:/usr/lib/java:.]
+06-Dec-2020 00:00:57.509 INFO [main] org.apache.coyote.AbstractProtocol.init Initializing ProtocolHandler ["http-nio-8080"]
+06-Dec-2020 00:00:57.538 INFO [main] org.apache.catalina.startup.Catalina.load Server initialization in [405] milliseconds
+06-Dec-2020 00:00:57.568 INFO [main] org.apache.catalina.core.StandardService.startInternal Starting service [Catalina]
+06-Dec-2020 00:00:57.569 INFO [main] org.apache.catalina.core.StandardEngine.startInternal Starting Servlet engine: [Apache Tomcat/9.0.40]
+06-Dec-2020 00:00:57.574 INFO [main] org.apache.catalina.startup.HostConfig.deployDirectory Deploying web application directory [/Users/jackie/Downloads/tomcat/webapps/Servlet]
+06-Dec-2020 00:00:57.777 INFO [main] org.apache.catalina.startup.HostConfig.deployDirectory Deployment of web application directory [/Users/jackie/Downloads/tomcat/webapps/Servlet] has finished in [203] ms
+06-Dec-2020 00:00:57.777 INFO [main] org.apache.catalina.startup.HostConfig.deployDirectory Deploying web application directory [/Users/jackie/Downloads/tomcat/webapps/docs]
+06-Dec-2020 00:00:57.789 INFO [main] org.apache.catalina.startup.HostConfig.deployDirectory Deployment of web application directory [/Users/jackie/Downloads/tomcat/webapps/docs] has finished in [12] ms
+06-Dec-2020 00:00:57.790 INFO [main] org.apache.catalina.startup.HostConfig.deployDirectory Deploying web application directory [/Users/jackie/Downloads/tomcat/webapps/manager]
+06-Dec-2020 00:00:57.813 INFO [main] org.apache.catalina.startup.HostConfig.deployDirectory Deployment of web application directory [/Users/jackie/Downloads/tomcat/webapps/manager] has finished in [23] ms
+06-Dec-2020 00:00:57.813 INFO [main] org.apache.catalina.startup.HostConfig.deployDirectory Deploying web application directory [/Users/jackie/Downloads/tomcat/webapps/examples]
+06-Dec-2020 00:00:57.977 INFO [main] org.apache.catalina.startup.HostConfig.deployDirectory Deployment of web application directory [/Users/jackie/Downloads/tomcat/webapps/examples] has finished in [164] ms
+06-Dec-2020 00:00:57.977 INFO [main] org.apache.catalina.startup.HostConfig.deployDirectory Deploying web application directory [/Users/jackie/Downloads/tomcat/webapps/ROOT]
+06-Dec-2020 00:00:57.987 INFO [main] org.apache.catalina.startup.HostConfig.deployDirectory Deployment of web application directory [/Users/jackie/Downloads/tomcat/webapps/ROOT] has finished in [10] ms
+06-Dec-2020 00:00:57.987 INFO [main] org.apache.catalina.startup.HostConfig.deployDirectory Deploying web application directory [/Users/jackie/Downloads/tomcat/webapps/host-manager]
+06-Dec-2020 00:00:58.000 INFO [main] org.apache.catalina.startup.HostConfig.deployDirectory Deployment of web application directory [/Users/jackie/Downloads/tomcat/webapps/host-manager] has finished in [12] ms
+06-Dec-2020 00:00:58.004 INFO [main] org.apache.coyote.AbstractProtocol.start Starting ProtocolHandler ["http-nio-8080"]
+06-Dec-2020 00:00:58.011 INFO [main] org.apache.catalina.startup.Catalina.start Server startup in [472] milliseconds

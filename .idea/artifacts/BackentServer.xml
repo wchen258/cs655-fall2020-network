@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="exploded-war" name="BackentServer">
+    <output-path>$PROJECT_DIR$/out/artifacts/BackentServer</output-path>
+    <root id="root">
+      <element id="directory" name="backendoutput" />
+    </root>
+  </artifact>
+</component>
