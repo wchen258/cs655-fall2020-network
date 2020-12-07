@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>Image Recognition</title>
+    <script src="https://ajax.aspnetcdn.com/ajax/jQuery/jquery-3.5.1.min.js"></script>
 </head>
 <body>
 
@@ -16,7 +17,7 @@
 
         <script type="text/javascript">
             $("#image").change(function(){
-                var objUrl = getObjectURL(this.files[0]) ;//获取文件信息
+                var objUrl = getObjectURL(this.files[0]) ; // get file information
                 console.log("objUrl = "+objUrl);
                 if (objUrl) {
                     $("#img0").attr("src", objUrl);
