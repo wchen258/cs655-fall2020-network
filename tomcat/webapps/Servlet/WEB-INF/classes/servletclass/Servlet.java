@@ -1,6 +1,5 @@
 package servletclass;
 
-import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -14,25 +13,31 @@ import java.nio.ByteBuffer;
 import java.nio.file.*;
 
 import org.apache.commons.fileupload.FileItem;
-import org.apache.commons.fileupload.FileUploadException;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
-import org.apache.commons.io.output.*;
 
 
 public class Servlet extends HttpServlet {
 
     private boolean isMultipart;
     private String filePath;
-    private int maxFileSize = 50 * 1024;
+    private int maxFileSize = 50 * 1024 * 1024;
     private int maxMemSize = 4 * 1024;
     private File file;
 
     public void init( ){
         // Get the file location where it would be stored.
-        filePath = getServletContext().getInitParameter("file-upload");
+        filePath = new File(System.getProperty("user.dir")).getParent() + File.separator + "webapps" + File.separator + "Servlet" + File.separator + "resources";
     }
 
+    @Override
+    public void doGet(HttpServletRequest request,
+                      HttpServletResponse response) throws IOException,
+            ServletException {
+        doPost(request, response);
+    }
+
+    @Override
     public void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
 //        response.setContentType("text/html");
 //
@@ -41,13 +46,11 @@ public class Servlet extends HttpServlet {
 //        String username = request.getParameter("username");
 //        String password = request.getParameter("password");
 //
-//        Part filePart = request.getPart("image"); // Retrieves <input type="file" name="file">
-//        String fileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString(); // MSIE fix.
-//        InputStream fileContent = filePart.getInputStream();
+////        InputStream fileContent = filePart.getInputStream();
 //
 //        writer.println("<!DOCTYPE> <html><head><title> Welcome Servlet</title></head>");
-//        writer.println("<body><h3>Welcome to the world of Servlet!" + fileContent.toString() + " and " + password + " </h3></body>");
-
+//        writer.println("<body><h3>Welcome to the world of Servlet!" + filePath + " and " + password + " </h3></body>");
+//
         isMultipart = ServletFileUpload.isMultipartContent(request);
         response.setContentType("text/html");
         PrintWriter out = response.getWriter();
@@ -70,7 +73,7 @@ public class Servlet extends HttpServlet {
         factory.setSizeThreshold(maxMemSize);
 
         // Location to save data that is larger than maxMemSize.
-        factory.setRepository(new File("/Users/jackie/Downloads"));
+        factory.setRepository(new File(filePath));
 
         // Create a new file upload handler
         ServletFileUpload upload = new ServletFileUpload(factory);
@@ -85,12 +88,6 @@ public class Servlet extends HttpServlet {
             // Process the uploaded file items
             Iterator i = fileItems.iterator();
 
-            out.println("<html>");
-            out.println("<head>");
-            out.println("<title>Servlet upload</title>");
-            out.println("</head>");
-            out.println("<body>");
-
             while ( i.hasNext () ) {
                 FileItem fi = (FileItem)i.next();
                 if ( !fi.isFormField () ) {
@@ -103,16 +100,24 @@ public class Servlet extends HttpServlet {
 
                     // Write the file
                     if( fileName.lastIndexOf("\\") >= 0 ) {
-                        file = new File( filePath + fileName.substring( fileName.lastIndexOf("\\"))) ;
+                        file = new File( filePath + File.separator + fileName.substring( fileName.lastIndexOf("\\"))) ;
                     } else {
-                        file = new File( filePath + fileName.substring(fileName.lastIndexOf("\\")+1)) ;
+                        file = new File( filePath + File.separator + fileName.substring(fileName.lastIndexOf("\\")+1)) ;
                     }
                     fi.write( file ) ;
-                    out.println("Uploaded Filename: " + fileName + "<br>");
+                    byte[] fileContent = Files.readAllBytes(file.toPath());
+                    String tag = handle(fileContent);
+                    file.delete();
+                    out.println("<html>");
+                    out.println("<head>");
+                    out.println("<title>Servlet upload</title>");
+                    out.println("</head>");
+                    out.println("<body>");
+                    out.println("<p>" + tag + "</p>");
+                    out.println("</body>");
+                    out.println("</html>");
                 }
             }
-            out.println("</body>");
-            out.println("</html>");
         } catch(Exception ex) {
             System.out.println(ex);
         }

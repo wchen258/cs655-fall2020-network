@@ -7,12 +7,9 @@
 
     <div align="center" style="margin-top: 50px;">
 
-        <form action="servlet">
-            Please enter your Username:  <input type="text" name="username" size="20px"> <br>
-            Please enter your Password:  <input type="text" name="password" size="20px"> <br><br>
+        <form action="servlet" method = "post"  enctype="multipart/form-data">
             <input type="file"
-                   id="image" name="image"
-                   accept="image/png, image/jpeg">
+                   id="image" name="image">
             <input type="submit" value="submit">
         </form>
 
