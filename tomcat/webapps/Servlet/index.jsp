@@ -29,10 +29,10 @@
         position: relative;
         background-color: #E87A90;
         border: none;
-        font-size: 20px;
+        font-size: 15px;
         color: #FFFFFF;
-        padding: 20px;
-        width: 150px;
+        padding: 10px;
+        width: 100px;
         text-align: center;
         -webkit-transition-duration: 0.4s; /* Safari */
         transition-duration: 0.4s;
@@ -66,7 +66,7 @@
 
 <body>
 
-    <div align="left" style="margin-top: 20px;">
+    <div align="center" style="margin-top: 20px;">
         <h3>please select picture:</h3>
         <form action="servlet" method = "post"  enctype="multipart/form-data" >
             <input type="file"
