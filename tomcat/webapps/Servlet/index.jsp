@@ -70,7 +70,7 @@
         <h3>please select picture:</h3>
         <form action="servlet" method = "post"  enctype="multipart/form-data" >
             <input type="file"
-                   id="image" name="image"><br>
+                   id="image" name="image" required><br>
             <p>
             </p>
             <input type="submit" value="Submit">
