@@ -10,10 +10,10 @@
         position: relative;
         background-color: #E87A90;
         border: none;
-        font-size: 18px;
+        font-size: 15px;
         color: #FFFFFF;
         padding: 10px;
-        width: 150px;
+        width: 100px;
         text-align: center;
         -webkit-transition-duration: 0.4s; /* Safari */
         transition-duration: 0.4s;
@@ -46,8 +46,11 @@
 </style>
 <body>
 <div align="center" style="margin-top: 20px;">
-    <p><button class="button">tag: ${tag}; confidence: ${confidence}</button></p>
-    <a href="/Servlet">Return</a>
+    <p>tag: ${tag}</p>
+    <p>confidence: ${confidence}</p>
+    <a href="/Servlet">
+        <button class="button">Retrun</button>
+    </a>
 </div>
 </body>
 </html>
