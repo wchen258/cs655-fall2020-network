@@ -56,14 +56,7 @@ public class Servlet extends HttpServlet {
         PrintWriter out = response.getWriter();
 
         if( !isMultipart ) {
-            out.println("<html>");
-            out.println("<head>");
-            out.println("<title>Servlet upload</title>");
-            out.println("</head>");
-            out.println("<body>");
-            out.println("<p>No file uploaded</p>");
-            out.println("</body>");
-            out.println("</html>");
+            request.getRequestDispatcher("error.jsp").forward(request, response);
             return;
         }
 
@@ -108,14 +101,21 @@ public class Servlet extends HttpServlet {
                     byte[] fileContent = Files.readAllBytes(file.toPath());
                     String tag = handle(fileContent);
                     file.delete();
-                    out.println("<html>");
-                    out.println("<head>");
-                    out.println("<title>Servlet upload</title>");
-                    out.println("</head>");
-                    out.println("<body>");
-                    out.println("<p>" + tag + "</p>");
-                    out.println("</body>");
-                    out.println("</html>");
+                    if(tag.equals("No result.")) {
+                        request.setAttribute("tag", tag);
+                        request.setAttribute("confidence", "N/A");
+                    }
+                    else {
+                        String[] strList = tag.split(" ");
+                        request.setAttribute("confidence", strList[strList.length - 1]);
+                        StringBuilder sb = new StringBuilder();
+                        for(int j = 0; j < strList.length - 1; j++) {
+                            sb.append(strList[j]);
+                            sb.append(" ");
+                        }
+                        request.setAttribute("tag", sb.toString());
+                    }
+                    request.getRequestDispatcher("result.jsp").forward(request, response);
                 }
             }
         } catch(Exception ex) {
