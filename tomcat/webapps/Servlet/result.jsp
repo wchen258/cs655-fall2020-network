@@ -49,7 +49,7 @@
     <p>tag: ${tag}</p>
     <p>confidence: ${confidence}</p>
     <a href="/Servlet">
-        <button class="button">Retrun</button>
+        <button class="button">Return</button>
     </a>
 </div>
 </body>
