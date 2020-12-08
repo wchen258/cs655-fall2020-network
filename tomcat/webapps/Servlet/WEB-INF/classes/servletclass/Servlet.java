@@ -39,18 +39,6 @@ public class Servlet extends HttpServlet {
 
     @Override
     public void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
-//        response.setContentType("text/html");
-//
-//        PrintWriter writer = response.getWriter();
-//
-//        String username = request.getParameter("username");
-//        String password = request.getParameter("password");
-//
-////        InputStream fileContent = filePart.getInputStream();
-//
-//        writer.println("<!DOCTYPE> <html><head><title> Welcome Servlet</title></head>");
-//        writer.println("<body><h3>Welcome to the world of Servlet!" + filePath + " and " + password + " </h3></body>");
-//
         isMultipart = ServletFileUpload.isMultipartContent(request);
         response.setContentType("text/html");
         PrintWriter out = response.getWriter();
@@ -127,7 +115,7 @@ public class Servlet extends HttpServlet {
     public static String handle(byte[] image) {
         ByteBuffer bb = ByteBuffer.allocate(4);
         bb.putInt(image.length);
-        try (Socket s = new Socket("localhost", 8080)) {
+        try (Socket s = new Socket("model", 8080)) {
             OutputStream os = s.getOutputStream();
             os.write(bb.array());
             os.write(image);
