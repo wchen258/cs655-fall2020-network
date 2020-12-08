@@ -9,7 +9,7 @@ class geni(scrapy.Spider):
 
     def start_requests(self):
         self.ip = getattr(self, 'ip', 'localhost')
-        self.n = 10
+        self.n = int(getattr(self, 'n', '10'))
         self.reponse_time = []
         with open('../dog.jpg', 'rb') as f:
             img = f.read()
@@ -27,7 +27,7 @@ class geni(scrapy.Spider):
 
     def parse(self, response: scrapy.http.Response):
         self.reponse_time.append(time.time()-response.meta['start'])
-        # self.logger.info(response.text)
+        self.logger.debug(response.text)
 
     def closed(self, reason):
         with open(f'result_{self.ip}_{self.settings.get("CONCURRENT_REQUESTS")}', 'w') as f:

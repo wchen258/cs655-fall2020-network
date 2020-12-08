@@ -8,3 +8,10 @@ javac -cp '../../lib/*' Servlet.java
 cd ../../../../../bin
 mkdir -p ../logs
 sudo ./catalina.sh start
+
+# local crawling test
+sudo apt install -y python3-pip
+python3 -m pip install scrapy
+export PATH="${PATH}:${HOME}/.local/bin"
+cd ../../geni_test
+scrapy crawl -L DEBUG -s CONCURRENT_REQUESTS=2 -a n=5 -a ip=localhost geni
