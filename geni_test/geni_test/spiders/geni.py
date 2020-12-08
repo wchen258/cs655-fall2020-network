@@ -4,6 +4,7 @@ import time
 
 import scrapy
 
+
 class geni(scrapy.Spider):
     name = 'geni'
 
@@ -30,6 +31,9 @@ class geni(scrapy.Spider):
         self.logger.debug(response.text)
 
     def closed(self, reason):
-        with open(f'result_{self.ip}_{self.settings.get("CONCURRENT_REQUESTS")}', 'w') as f:
+        with open(f'single_response_{self.ip}_{self.settings.get("CONCURRENT_REQUESTS")}', 'w') as f:
             for t in self.reponse_time:
                 f.write(str(t) + '\n')
+        with open(f'total_response_{self.ip}', 'a') as f:
+            f.write(str(self.crawler.stats.get_stats()
+                        ['elapsed_time_seconds'])+'\n')
